@@ -55,18 +55,27 @@ module GraphQLIncludable
     return [] unless node && return_type && return_model
 
     node.scoped_children[return_type].each do |child_name, child_node|
-      child_association_name, explicit_includes = suggested_association_name(child_name, child_node)
-      association, delegated_model_name = find_association(return_model, child_association_name)
+      specified_includes = child_node.definitions[0].metadata[:includes]
+      raw_association_name = specified_includes || (child_node.definitions[0].property || child_name).to_sym
+      delegated_model_name = get_delegated_model(return_model, raw_association_name)
+      association_name = delegated_model_name || raw_association_name
+      association = return_model.reflect_on_association(association_name)
+
       if association
         child_includes = includes_from_irep_node(child_node)
 
         if node_has_active_record_children(child_node) && child_includes.size > 0
-          nested_includes[delegated_model_name || child_association_name] = wrap_delegate(child_includes, delegated_model_name, child_association_name)
+          if delegated_model_name
+            nested_includes[delegated_model_name] = {}
+            nested_includes[delegated_model_name][raw_association_name] = child_includes
+          else
+            nested_includes[association_name] = child_includes
+          end
         else
-          includes << wrap_delegate(child_association_name, delegated_model_name)
+          includes << association_name
         end
-      elsif explicit_includes
-        includes << explicit_includes
+      elsif specified_includes
+        includes << specified_includes
       end
     end
 
@@ -108,24 +117,8 @@ module GraphQLIncludable
     type
   end
 
-  # find a valid association on return_model, following method delegation
-  def self.find_association(return_model, child_name)
-    delegated_model = return_model.instance_variable_get('@delegate_cache').try(:[], child_name.to_sym)
-    association_model = delegated_model ? return_model.reflect_on_association(delegated_model).klass : return_model
-    association = association_model.reflect_on_association(child_name)
-
-    [association, delegated_model]
-  end
-
-  # find the association to look for based on a field definition
-  # precedence is `includes` key, then `property` key, then the field name
-  def self.suggested_association_name(name, node)
-    includes_metadata = node.definitions[0].metadata[:includes]
-
-    assoc_name = node.definitions[0].property || name
-    assoc_name = includes_metadata if includes_metadata && includes_metadata.is_a?(Symbol)
-
-    [assoc_name.to_sym, includes_metadata]
+  def self.get_delegated_model(model, method_name)
+    model.instance_variable_get('@delegate_cache').try(:[], method_name.to_sym)
   end
 
 end

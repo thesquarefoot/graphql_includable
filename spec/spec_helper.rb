@@ -40,6 +40,7 @@ end
 TreeType = GraphQL::ObjectType.define do
   name "Tree"
   field :apples, !types[!AppleType]
+  field :yabloki, !types[!AppleType], property: :apples
   field :worms, !types[!WormType]
   field :fruit, types[AppleType], includes: :apples
 end

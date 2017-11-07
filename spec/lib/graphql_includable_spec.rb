@@ -13,6 +13,11 @@ RSpec.describe GraphQLIncludable, :type => :concern do
     expect(includes).to eq([:apples])
   end
 
+  it "includes associations defined using graphql `property`" do
+    schema.execute("{ tree { yabloki { __typename } } }")
+    expect(includes).to eq([:apples])
+  end
+
   it "includes nested has_one -> has_many associations" do
     schema.execute("{ apple { tree { apples { __typename } } } }")
     expect(includes).to eq([{ tree: [:apples] }])
@@ -33,7 +38,7 @@ RSpec.describe GraphQLIncludable, :type => :concern do
     expect(includes).to eq([])
   end
 
-  it "includes associations through a delegated method" do
+  it "includes associations through a method delegated to an association" do
     schema.execute("{ tree { worms { apple { __typename } } } }")
     expect(includes).to eq([{ apples: { worms: [:apple] } }])
   end

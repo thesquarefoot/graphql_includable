@@ -28,8 +28,6 @@ class Worm < ActiveRecord::Base
   belongs_to :apple
 end
 
-
-
 AppleType = GraphQL::ObjectType.define do
   name "Apple"
   field :tree, !TreeType
@@ -43,6 +41,7 @@ TreeType = GraphQL::ObjectType.define do
   field :yabloki, !types[!AppleType], property: :apples
   field :worms, !types[!WormType]
   field :fruit, types[AppleType], includes: :apples
+  field :fruitWithTree, types[AppleType], includes: { apples: [:tree] }, property: :fruit
 end
 
 WormType = GraphQL::ObjectType.define do

@@ -64,18 +64,11 @@ module GraphQLIncludable
 
       if association
         child_includes = includes_from_irep_node(child_node)
-
         if node_has_active_record_children(child_node) && child_includes.size > 0
-          if delegated_model_name
-            nested_includes[delegated_model_name] = {}
-            nested_includes[delegated_model_name][raw_association_name] = child_includes
-          else
-            nested_includes[association_name] = child_includes
-          end
-        elsif specified_includes
-          includes << specified_includes
+          child_key = delegated_model_name || association_name
+          nested_includes[child_key] = wrap_delegate(child_includes, delegated_model_name, raw_association_name)
         else
-          includes << association_name
+          includes << wrap_delegate(specified_includes || association_name, delegated_model_name)
         end
       elsif specified_includes
         includes << specified_includes

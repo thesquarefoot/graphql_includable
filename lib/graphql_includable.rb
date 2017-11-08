@@ -56,7 +56,8 @@ module GraphQLIncludable
 
     node.scoped_children[return_type].each do |child_name, child_node|
       specified_includes = child_node.definitions[0].metadata[:includes]
-      raw_association_name = specified_includes || (child_node.definitions[0].property || child_name).to_sym
+      raw_association_name = (child_node.definitions[0].property || child_name).to_sym
+      raw_association_name = specified_includes if specified_includes.is_a?(Symbol)
       delegated_model_name = get_delegated_model(return_model, raw_association_name)
       association_name = delegated_model_name || raw_association_name
       association = return_model.reflect_on_association(association_name)
@@ -71,6 +72,8 @@ module GraphQLIncludable
           else
             nested_includes[association_name] = child_includes
           end
+        elsif specified_includes
+          includes << specified_includes
         else
           includes << association_name
         end

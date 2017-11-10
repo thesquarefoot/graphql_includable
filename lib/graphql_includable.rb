@@ -28,8 +28,8 @@ module GraphQLIncludable
   end
 
   def self.generate_includes_from_graphql(ctx, model_name)
-    matching_node = GraphQLIncludable.find_child_returning_model_name(ctx.irep_node, model_name)
-    GraphQLIncludable.includes_from_graphql_field(matching_node)
+    matching_node = find_child_returning_model_name(ctx.irep_node, model_name)
+    includes_from_graphql_field(matching_node)
   end
 
   def self.find_child_returning_model_name(node, model_name)
@@ -109,7 +109,7 @@ module GraphQLIncludable
     end
   end
 
-  # unwrap GraphQL ListType and NonNullType wrappers
+  # get unwrapped return type from a field, stripping ListType / NonNullType wrappers
   def self.node_return_type(node)
     type = node.return_type
     type = type.of_type while type.respond_to? :of_type

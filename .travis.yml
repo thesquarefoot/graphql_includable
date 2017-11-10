@@ -1,0 +1,13 @@
+language: ruby
+
+branches:
+  only:
+    - master
+
+install:
+  - bundle install
+
+script:
+  - bundle exec rubocop -R
+  - bundle exec rspec
+

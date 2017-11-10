@@ -59,19 +59,22 @@ module GraphQLIncludable
       raw_association_name = (child_node.definitions[0].property || child_name).to_sym
       raw_association_name = specified_includes if specified_includes.is_a?(Symbol)
       delegated_model_name = get_delegated_model(return_model, raw_association_name)
-      association_name = delegated_model_name || raw_association_name
-      association = return_model.reflect_on_association(association_name)
+      delegated_model = delegated_model_name.to_s.camelize.constantize if delegated_model_name
+      association = (delegated_model || return_model).reflect_on_association(raw_association_name)
 
       if association
         child_includes = includes_from_irep_node(child_node)
-        if node_has_active_record_children(child_node) && child_includes.size > 0
-          child_key = delegated_model_name || association_name
+        has_nested_includes = node_has_active_record_children(child_node) && child_includes.size > 0
+        if has_nested_includes
+          child_key = delegated_model_name || raw_association_name
           nested_includes[child_key] = wrap_delegate(child_includes, delegated_model_name, raw_association_name)
         else
-          includes << wrap_delegate(specified_includes || association_name, delegated_model_name)
+          includes << wrap_delegate(specified_includes || raw_association_name, delegated_model_name)
         end
       elsif specified_includes
         includes << specified_includes
+      elsif delegated_model_name
+        includes << delegated_model_name
       end
     end
 

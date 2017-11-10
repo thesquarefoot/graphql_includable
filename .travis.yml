@@ -11,3 +11,7 @@ script:
   - bundle exec rubocop -R
   - bundle exec rspec
 
+notifications:
+  slack:
+    rooms:
+      secure: ch/VB6E7GPJUgrAoR8JrmEo+0ugw5A+p+NuqN68eFFrAbi2SCNnz3rgxufNkJ9/fZytOxNAE89pgHX4uZ4RfIuNcAnDHVk2KalwBw//U8Us9V9jkMyQ8rPnf/pxrEcrNR1izy2NU6QyLGnWSoQM9LA8wATbdISPGWmiG+CnklpOKm1Ganl+LcA7DKldOewflAsYO/98h3J3R4szFChRMEvQToAfjx4vovdGeU6Rg/9+8Y4JtWTqWwOqf2jXko8dWJxnkvwGvPHc/l24MtReuQAtn06VID85E6wR+Xh5ZfHHOPOmtMFxFxZVpD7GdhCziFejigNyUiR50vB6kBMoWe8JWuSm+ePVaaYmb1szj1ts1jIvD8oDpv9sTnrWjA8SaRVF4pa8LLX1wxpEPMUnE/mcXV5IdsejpxWTSylZ0iyT5eX7O4OfwT+5UAXqUuTqvIKdvbV8nmITEmQ7vON76/UkQouCEPzWY5oHEsRr1LOmmpEYvncf9W7Dnzeu1zi+gkeRrgJMM4b0kEPYpi1d26axffP+uNTHU8/t3yQybqs1Sy/riD4hTKbcFZlXeLhInCeU5ikLHNBltBhl6iAZ9U6XG2QprO+rvG8/bh2mQqqyJQRLHcbZHpGKKUYwmj0WO9AWOJxO9XsesIyuRJJexK/ToBjcBzzJ2chvn5MiXzD4=

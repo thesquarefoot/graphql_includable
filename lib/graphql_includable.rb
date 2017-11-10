@@ -1,14 +1,16 @@
-require "graphql"
-require "active_support/concern"
+require 'graphql'
+require 'active_support/concern'
 
-GraphQL::Field.accepts_definitions includes: GraphQL::Define.assign_metadata_key(:includes)
+GraphQL::Field.accepts_definitions(
+  includes: GraphQL::Define.assign_metadata_key(:includes)
+)
 
 module GraphQLIncludable
   extend ActiveSupport::Concern
 
   module ClassMethods
-    def includes_from_graphql(query_context)
-      generated_includes = GraphQLIncludable.generate_includes_from_graphql(query_context, self.model_name.to_s)
+    def includes_from_graphql(ctx)
+      generated_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, model_name.to_s)
       includes(generated_includes)
     end
 
@@ -25,71 +27,71 @@ module GraphQLIncludable
     end
   end
 
-  private
-
-  def self.generate_includes_from_graphql(query_context, model_name)
-    matching_node = GraphQLIncludable.find_child_node_matching_model_name(query_context.irep_node, model_name)
-    GraphQLIncludable.includes_from_irep_node(matching_node)
+  def self.generate_includes_from_graphql(ctx, model_name)
+    matching_node = find_child_returning_model_name(ctx.irep_node, model_name)
+    includes_from_graphql_field(matching_node)
   end
 
-  def self.find_child_node_matching_model_name(node, model_name)
+  def self.find_child_returning_model_name(node, model_name)
     matching_node = nil
-    return_type = unwrapped_type(node)
+    return_type = node_return_type(node)
     if return_type.to_s == model_name
       matching_node = node
     elsif node.respond_to? :scoped_children
-      node.scoped_children[return_type].each do |child_name, child_node|
-        matching_node = find_child_node_matching_model_name(child_node, model_name)
+      node.scoped_children[return_type].each do |_child_name, child_node|
+        matching_node = find_child_returning_model_name(child_node, model_name)
         break if matching_node
       end
     end
     matching_node
   end
 
-  def self.includes_from_irep_node(node)
+  def self.includes_from_graphql_field(node)
     includes = []
     nested_includes = {}
 
-    return_type = unwrapped_type(node)
     return_model = node_return_class(node)
-    return [] unless node && return_type && return_model
+    return [] unless node && return_model
 
-    node.scoped_children[return_type].each do |child_name, child_node|
-      specified_includes = child_node.definitions[0].metadata[:includes]
-      raw_association_name = (child_node.definitions[0].property || child_name).to_sym
-      raw_association_name = specified_includes if specified_includes.is_a?(Symbol)
-      delegated_model_name = get_delegated_model(return_model, raw_association_name)
-      association_name = delegated_model_name || raw_association_name
-      association = return_model.reflect_on_association(association_name)
-
-      if association
-        child_includes = includes_from_irep_node(child_node)
-        if node_has_active_record_children(child_node) && child_includes.size > 0
-          child_key = delegated_model_name || association_name
-          nested_includes[child_key] = wrap_delegate(child_includes, delegated_model_name, raw_association_name)
-        else
-          includes << wrap_delegate(specified_includes || association_name, delegated_model_name)
-        end
-      elsif specified_includes
-        includes << specified_includes
+    node.scoped_children[node_return_type(node)].each do |_child_name, child_node|
+      child_includes = includes_from_graphql_child(child_node, return_model)
+      if child_includes.is_a?(Hash)
+        nested_includes.merge!(child_includes)
+      else
+        child_includes = [child_includes] unless child_includes.is_a?(Array)
+        includes += child_includes
       end
     end
 
-    includes << nested_includes if nested_includes.size > 0
+    includes << nested_includes unless nested_includes.empty?
     includes
   end
 
-  def self.node_has_active_record_children(node)
-    node.scoped_children[unwrapped_type(node)].each do |child_return_name, child_node|
-      node_returns_active_record?(child_node)
+  def self.includes_from_graphql_child(child_node, return_model)
+    specified_includes = child_node.definitions[0].metadata[:includes]
+    attribute_name = node_predicted_association_name(child_node)
+    includes_chain = delegated_includes_chain(return_model, attribute_name)
+
+    if model_has_association?(return_model, attribute_name, includes_chain)
+      child_includes = includes_from_graphql_field(child_node)
+      includes_chain << (specified_includes || attribute_name)
+      includes_chain << child_includes unless child_includes.empty?
+      array_to_nested_hash(includes_chain)
+    else
+      includes = []
+      includes << array_to_nested_hash(includes_chain) unless includes_chain.empty?
+      includes << specified_includes if specified_includes
+      includes
     end
   end
 
   def self.node_return_class(node)
+    # rubocop:disable Lint/HandleExceptions, Style/RedundantBegin
     begin
-      Object.const_get(unwrapped_type(node).name)
+      Object.const_get(node_return_type(node).name)
     rescue NameError
     end
+    # rubocop:enable Lint/HandleExceptions, Style/RedundantBegin
   end
 
   def self.node_returns_active_record?(node)
@@ -97,24 +99,56 @@ module GraphQLIncludable
     klass && klass < ActiveRecord::Base
   end
 
-  # return raw contents, or contents wrapped in a hash (for delegated associations)
-  def self.wrap_delegate(contents, delegate, delegate_key = delegate)
-    return contents unless delegate
-
-    obj = {}
-    obj[delegate_key] = contents
-    obj
+  def self.node_predicted_association_name(node)
+    definition = node.definitions[0]
+    specified_includes = definition.metadata[:includes]
+    if specified_includes.is_a?(Symbol)
+      specified_includes
+    else
+      (definition.property || definition.name).to_sym
+    end
   end
 
-  # unwrap GraphQL ListType and NonNullType wrappers
-  def self.unwrapped_type(node)
+  # get unwrapped return type from a field, stripping ListType / NonNullType wrappers
+  def self.node_return_type(node)
     type = node.return_type
     type = type.of_type while type.respond_to? :of_type
     type
   end
 
-  def self.get_delegated_model(model, method_name)
-    model.instance_variable_get('@delegate_cache').try(:[], method_name.to_sym)
+  def self.model_has_association?(model, association_name, includes_chain)
+    delegated_model = model_name_to_class(includes_chain.last) unless includes_chain.empty?
+    (delegated_model || model).reflect_on_association(association_name)
   end
 
+  # get a 1d array of the chain of delegated model names,
+  # so if model A delegates method B to model C, which delegates method B to model D,
+  # delegated_includes_chain(A, :B) => [:C, :D]
+  def self.delegated_includes_chain(model, method_name)
+    chain = []
+    delegated_model_name = model.delegate_cache.try(:[], method_name.to_sym)
+    while delegated_model_name
+      chain << delegated_model_name
+      delegated_model = model_name_to_class(delegated_model_name)
+      delegated_model_name = delegated_model.delegate_cache.try(:[], method_name.to_sym)
+    end
+    chain
+  end
+
+  # convert a 1d array into a nested hash
+  # e.g. [:foo, :bar, :baz] => { :foo => { :bar => :baz }}
+  def self.array_to_nested_hash(arr)
+    arr.reverse.inject { |acc, item| { item => acc } }
+  end
+
+  # convert a model name into a class variable,
+  # e.g. :search_parameters -> SearchParameters
+  def self.model_name_to_class(model_name)
+    begin
+      model = model_name.to_s.camelize.constantize
+    rescue NameError
+      model = model_name.to_s.singularize.camelize.constantize
+    end
+    model
+  end
 end

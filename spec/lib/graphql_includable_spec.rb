@@ -40,6 +40,11 @@ RSpec.describe GraphQLIncludable, :type => :concern do
       schema.execute("{ tree { worms { apple { __typename } } } }")
       expect(includes).to eq([{ apples: { worms: [:apple] } }])
     end
+
+    it "includes attributes delegated multiple times" do
+      schema.execute("{ tree { roots { worms { __typename } } } }")
+      expect(includes).to eq([{ tree_roots: [{ tree: { apples: :worms } }] }])
+    end
   end
 
   context "for associations defined using Field.includes" do

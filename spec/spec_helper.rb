@@ -16,11 +16,18 @@ end
 class Tree < ActiveRecord::Base
   include GraphQLIncludable
   has_many :apples
+  has_one :tree_roots
   delegate :worms, to: :apples
 
   def fruit
     apples
   end
+end
+
+class TreeRoots < ActiveRecord::Base
+  include GraphQLIncludable
+  belongs_to :tree
+  delegate :worms, to: :tree
 end
 
 class Worm < ActiveRecord::Base
@@ -42,6 +49,13 @@ TreeType = GraphQL::ObjectType.define do
   field :worms, !types[!WormType]
   field :fruit, types[AppleType], includes: :apples
   field :fruitWithTree, types[AppleType], includes: { apples: [:tree] }, property: :fruit
+  field :roots, !TreeRootsType, property: :tree_roots
+end
+
+TreeRootsType = GraphQL::ObjectType.define do
+  name "TreeRoots"
+  field :tree, !TreeType
+  field :worms, !types[!WormType]
 end
 
 WormType = GraphQL::ObjectType.define do

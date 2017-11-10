@@ -1,7 +1,7 @@
-require "active_support"
-require "active_record"
-require "graphql"
-require "graphql_includable"
+require 'active_support'
+require 'active_record'
+require 'graphql'
+require 'graphql_includable'
 
 class Apple < ActiveRecord::Base
   include GraphQLIncludable
@@ -36,14 +36,14 @@ class Worm < ActiveRecord::Base
 end
 
 AppleType = GraphQL::ObjectType.define do
-  name "Apple"
+  name 'Apple'
   field :tree, !TreeType
   field :seeds, !types[types.String]
   field :juice, !types.Int
 end
 
 TreeType = GraphQL::ObjectType.define do
-  name "Tree"
+  name 'Tree'
   field :apples, !types[!AppleType]
   field :yabloki, !types[!AppleType], property: :apples
   field :worms, !types[!WormType]
@@ -53,55 +53,53 @@ TreeType = GraphQL::ObjectType.define do
 end
 
 TreeRootsType = GraphQL::ObjectType.define do
-  name "TreeRoots"
+  name 'TreeRoots'
   field :tree, !TreeType
   field :worms, !types[!WormType]
 end
 
 WormType = GraphQL::ObjectType.define do
-  name "Worm"
+  name 'Worm'
   field :apple, !AppleType
 end
 
 OrchardType = GraphQL::ObjectType.define do
-  name "Orchard"
+  name 'Orchard'
   field :name, !types.String
   field :trees, !types[!TreeType]
 end
 
-_includes = nil
+private_includes = nil
 
-shared_examples "graphql" do
-  before(:each) { _includes = nil }
-  let(:includes) { _includes }
-  let(:query) {
+shared_examples 'graphql' do
+  before(:each) { private_includes = nil }
+  let(:includes) { private_includes }
+  let(:query) do
     GraphQL::ObjectType.define do
-      name "TestQuery"
+      name 'TestQuery'
       field :apple, AppleType do
-        resolve ->(_obj, _args, ctx) {
-          _includes = GraphQLIncludable.generate_includes_from_graphql(ctx, "Apple")
+        resolve ->(_obj, _args, ctx) do
+          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'Apple')
           nil
-        }
+        end
       end
       field :tree, TreeType do
-        resolve ->(_obj, _args, ctx) {
-          _includes = GraphQLIncludable.generate_includes_from_graphql(ctx, "Tree")
+        resolve ->(_obj, _args, ctx) do
+          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'Tree')
           nil
-        }
+        end
       end
       field :orchard, OrchardType do
-        resolve ->(_obj, _args, ctx) {
-          _includes = GraphQLIncludable.generate_includes_from_graphql(ctx, "Tree")
+        resolve ->(_obj, _args, ctx) do
+          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'Tree')
           nil
-        }
+        end
       end
     end
-  }
-  let(:schema) {
+  end
+  let(:schema) do
     GraphQL::Schema.define(query: query) do
-      resolve_type -> (type, obj, ctx) {
-        Object.const_get("#{obj.class.to_s}Type")
-      }
+      resolve_type ->(_type, obj, _ctx) { Object.const_get("#{obj.class}Type") }
     end
-  }
+  end
 end

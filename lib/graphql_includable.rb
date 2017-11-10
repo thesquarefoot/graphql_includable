@@ -1,15 +1,16 @@
-require "graphql"
-require "active_support/concern"
+require 'graphql'
+require 'active_support/concern'
 
-GraphQL::Field.accepts_definitions includes: GraphQL::Define.assign_metadata_key(:includes)
+GraphQL::Field.accepts_definitions(
+  includes: GraphQL::Define.assign_metadata_key(:includes)
+)
 
 module GraphQLIncludable
   extend ActiveSupport::Concern
 
   module ClassMethods
-    def includes_from_graphql(query_context)
-      generated_includes = GraphQLIncludable.generate_includes_from_graphql(query_context, self.model_name.to_s)
-      puts "final gen: #{generated_includes}"
+    def includes_from_graphql(ctx)
+      generated_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, model_name.to_s)
       includes(generated_includes)
     end
 
@@ -26,10 +27,8 @@ module GraphQLIncludable
     end
   end
 
-  private
-
-  def self.generate_includes_from_graphql(query_context, model_name)
-    matching_node = GraphQLIncludable.find_child_returning_model_name(query_context.irep_node, model_name)
+  def self.generate_includes_from_graphql(ctx, model_name)
+    matching_node = GraphQLIncludable.find_child_returning_model_name(ctx.irep_node, model_name)
     GraphQLIncludable.includes_from_graphql_field(matching_node)
   end
 
@@ -39,7 +38,7 @@ module GraphQLIncludable
     if return_type.to_s == model_name
       matching_node = node
     elsif node.respond_to? :scoped_children
-      node.scoped_children[return_type].each do |child_name, child_node|
+      node.scoped_children[return_type].each do |_child_name, child_node|
         matching_node = find_child_returning_model_name(child_node, model_name)
         break if matching_node
       end
@@ -51,18 +50,16 @@ module GraphQLIncludable
     includes = []
     nested_includes = {}
 
-    return_type = node_return_type(node)
     return_model = node_return_class(node)
-    return [] unless node && return_type && return_model
+    return [] unless node && return_model
 
-    node.scoped_children[return_type].each do |_child_name, child_node|
+    node.scoped_children[node_return_type(node)].each do |_child_name, child_node|
       child_includes = includes_from_graphql_child(child_node, return_model)
       if child_includes.is_a?(Hash)
         nested_includes.merge!(child_includes)
-      elsif child_includes.is_a?(Array)
+      else
+        child_includes = [child_includes] unless child_includes.is_a?(Array)
         includes += child_includes
-      elsif child_includes
-        includes << child_includes
       end
     end
 
@@ -89,10 +86,12 @@ module GraphQLIncludable
   end
 
   def self.node_return_class(node)
+    # rubocop:disable Lint/HandleExceptions, Style/RedundantBegin
     begin
       Object.const_get(node_return_type(node).name)
     rescue NameError
     end
+    # rubocop:enable Lint/HandleExceptions, Style/RedundantBegin
   end
 
   def self.node_returns_active_record?(node)
@@ -127,11 +126,11 @@ module GraphQLIncludable
   # delegated_includes_chain(A, :B) => [:C, :D]
   def self.delegated_includes_chain(model, method_name)
     chain = []
-    delegated_model_name = model.instance_variable_get('@delegate_cache').try(:[], method_name.to_sym)
+    delegated_model_name = model.delegate_cache.try(:[], method_name.to_sym)
     while delegated_model_name
       chain << delegated_model_name
       delegated_model = model_name_to_class(delegated_model_name)
-      delegated_model_name = delegated_model.instance_variable_get('@delegate_cache').try(:[], method_name.to_sym)
+      delegated_model_name = delegated_model.delegate_cache.try(:[], method_name.to_sym)
     end
     chain
   end

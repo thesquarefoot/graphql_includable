@@ -5,6 +5,10 @@ GraphQL::Field.accepts_definitions(
   includes: GraphQL::Define.assign_metadata_key(:includes)
 )
 
+GraphQL::ObjectType.accepts_definitions(
+  model: GraphQL::Define.assign_metadata_key(:model)
+)
+
 module GraphQLIncludable
   extend ActiveSupport::Concern
 
@@ -86,12 +90,13 @@ module GraphQLIncludable
   end
 
   def self.node_return_class(node)
-    # rubocop:disable Lint/HandleExceptions, Style/RedundantBegin
+    return_type = node_return_type(node)
+    # rubocop:disable Lint/HandleExceptions
     begin
-      Object.const_get(node_return_type(node).name)
+      return_type.metadata[:model] || Object.const_get(return_type.name)
     rescue NameError
     end
-    # rubocop:enable Lint/HandleExceptions, Style/RedundantBegin
+    # rubocop:enable Lint/HandleExceptions
   end
 
   def self.node_returns_active_record?(node)

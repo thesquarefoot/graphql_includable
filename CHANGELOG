@@ -1,3 +1,6 @@
+0.1.8
+  - add `model` override on GraphQL::ObjectTypes for when names don't line up
+
 0.1.6
   - last gem version didn't build correctly
 

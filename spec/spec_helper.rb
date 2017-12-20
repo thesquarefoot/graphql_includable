@@ -16,6 +16,7 @@ end
 class Tree < ActiveRecord::Base
   include GraphQLIncludable
   has_many :apples
+  has_many :prefixedApples
   has_one :tree_roots
   delegate :worms, to: :apples
 
@@ -40,6 +41,18 @@ AppleType = GraphQL::ObjectType.define do
   field :tree, !TreeType
   field :seeds, !types[types.String]
   field :juice, !types.Int
+end
+
+PrefixedAppleType = GraphQL::ObjectType.define do
+  name 'PrefixedApple'
+  model Apple
+  field :tree, !TreeType
+end
+
+PrefixedTreeType = GraphQL::ObjectType.define do
+  name 'PrefixedTree'
+  model Tree
+  field :apples, !types[!PrefixedAppleType]
 end
 
 TreeType = GraphQL::ObjectType.define do
@@ -86,6 +99,12 @@ shared_examples 'graphql' do
       field :tree, TreeType do
         resolve ->(_obj, _args, ctx) do
           private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'Tree')
+          nil
+        end
+      end
+      field :prefixedTree, PrefixedTreeType do
+        resolve ->(_obj, _args, ctx) do
+          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'PrefixedTree')
           nil
         end
       end

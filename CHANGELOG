@@ -1,3 +1,10 @@
+0.2.0
+  - add support for relay connections
+  - (breaking change) rename concern from GraphQLIncludable to GraphQLIncludable::Concern
+
+0.1.8
+  - add `model` override on GraphQL::ObjectTypes for when names don't line up
+
 0.1.6
   - last gem version didn't build correctly
 

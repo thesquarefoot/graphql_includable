@@ -4,7 +4,7 @@ require 'graphql'
 require 'graphql_includable'
 
 class Apple < ActiveRecord::Base
-  include GraphQLIncludable
+  include GraphQLIncludable::Concern
   belongs_to :tree
   has_many :worms
 
@@ -14,7 +14,7 @@ class Apple < ActiveRecord::Base
 end
 
 class Tree < ActiveRecord::Base
-  include GraphQLIncludable
+  include GraphQLIncludable::Concern
   has_many :apples
   has_one :tree_roots
   delegate :worms, to: :apples
@@ -25,13 +25,13 @@ class Tree < ActiveRecord::Base
 end
 
 class TreeRoots < ActiveRecord::Base
-  include GraphQLIncludable
+  include GraphQLIncludable::Concern
   belongs_to :tree
   delegate :worms, to: :tree
 end
 
 class Worm < ActiveRecord::Base
-  include GraphQLIncludable
+  include GraphQLIncludable::Concern
   belongs_to :apple
 end
 
@@ -42,6 +42,8 @@ AppleType = GraphQL::ObjectType.define do
   field :juice, !types.Int
 end
 
+ApplesConnectionType = AppleType.define_connection
+
 TreeType = GraphQL::ObjectType.define do
   name 'Tree'
   field :apples, !types[!AppleType]
@@ -50,6 +52,7 @@ TreeType = GraphQL::ObjectType.define do
   field :fruit, types[AppleType], includes: :apples
   field :fruitWithTree, types[AppleType], includes: { apples: [:tree] }, property: :fruit
   field :roots, !TreeRootsType, property: :tree_roots
+  connection :apples_connection, ApplesConnectionType, property: :apples
 end
 
 TreeRootsType = GraphQL::ObjectType.define do

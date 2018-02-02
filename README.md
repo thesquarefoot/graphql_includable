@@ -14,7 +14,7 @@ class Apple < ActiveRecord::Base
 end
 
 class Tree < ActiveRecord::Base
-  include GraphQLIncludable
+  include GraphQLIncludable::Concern
   has_many :apples
 end
 ```

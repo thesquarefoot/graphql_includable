@@ -39,17 +39,21 @@ module GraphQLIncludable
     end
 
     def self.children_through_connection(node, return_model)
-      children = node.scoped_children[node.return_type.unwrap]
       includes = {}
+      # if node_is_relay_connection?(node)
+      #   all_connection_children = node.scoped_children[node.return_type.unwrap]
+      #   connection_children = all_connection_children.except('edges')
+      #   edge_node = all_connection_children['edges']
+      #   all_edge_children = edge_node.scoped_children[edge_node.return_type.unwrap]
+      #   edge_children = all_edge_children.except('node')
+      #   target_node = all_edge_children['node']
+      #   children = target_node.scoped_children[target_node.return_type.unwrap]
 
-      if node_is_relay_connection?(node)
-        all_children = children['edges'].scoped_children[children['edges'].return_type.unwrap]
-        children = all_children.except('node')
-
-        target_node = all_children['node']
-        target_association = return_model.reflect_on_association(node_return_class(target_node).name.underscore)
-        includes[target_association.name] = includes_from_graphql_node(target_node)
-      end
+      #   target_association = return_model.reflect_on_association(node_return_class(target_node).name.underscore)
+      #   includes[target_association.name] = includes_from_graphql_node(target_node) if target_association
+      # else
+        children = node.scoped_children[node.return_type.unwrap]
+      # end
 
       [children, includes]
     end
@@ -60,7 +64,6 @@ module GraphQLIncludable
 
       includes = []
       children, nested_includes = children_through_connection(node, return_model)
-
       children.each_value do |child_node|
         child_includes = includes_from_graphql_child(child_node, return_model)
 
@@ -85,16 +88,17 @@ module GraphQLIncludable
         child_includes = includes_from_graphql_node(child_node)
         join_name = (specified_includes || attribute_name)
 
-        if node_is_relay_connection?(child_node)
-          join_name = association.options[:through]
-          edge_includes_chain = [association.name]
-          edge_includes_chain << child_includes.pop[association.name.to_s.singularize.to_sym] if child_includes.last&.is_a?(Hash)
-          edge_includes = array_to_nested_hash(edge_includes_chain)
-        end
+        # if node_is_relay_connection?(child_node)
+        #   join_name = association.options[:through]
+        #   edge_includes_chain = [association.name]
+        #   edge_includes_chain << child_includes.pop[association.name.to_s.singularize.to_sym] if child_includes.last&.is_a?(Hash)
+        #   edge_includes = array_to_nested_hash(edge_includes_chain)
+        # end
 
         includes_chain << join_name
         includes_chain << child_includes unless child_includes.blank?
-
+        # byebug if node_is_relay_connection?(child_node)
+        edge_includes=nil
         [edge_includes, array_to_nested_hash(includes_chain)].reject(&:blank?)
       else
         includes = []

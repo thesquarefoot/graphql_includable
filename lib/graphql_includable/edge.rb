@@ -11,8 +11,9 @@ module GraphQLIncludable
         terminal_node = { rel_name.to_s.pluralize => terminal_node }
       end
       search_hash = root_node.merge(terminal_node)
-
-      @edge ||= edge_class.includes(*join_chain.map { |s| s.to_s.singularize }).find_by(search_hash)
+      edge_includes = join_chain.map { |s| s.to_s.singularize }
+      edge_class = edge_class.includes(*edge_includes) unless edge_includes.empty?
+      @edge ||= edge_class.find_by(search_hash)
     end
 
     def method_missing(method_name, *args, &block)

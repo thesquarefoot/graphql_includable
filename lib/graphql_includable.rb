@@ -1,4 +1,5 @@
 require 'graphql'
+require 'graphql_includable/resolver'
 require 'graphql_includable/concern'
 require 'graphql_includable/edge'
 

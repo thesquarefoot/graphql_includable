@@ -1,3 +1,12 @@
+0.2.6
+  - fix rails introspection using strings instead of symbols
+
+0.2.5
+  - support polymorphic edge type associations
+
+0.2.4
+  - relay edge compat fix
+
 0.2.0
   - add support for relay connections
   - (breaking change) rename concern from GraphQLIncludable to GraphQLIncludable::Concern

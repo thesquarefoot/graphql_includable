@@ -5,6 +5,10 @@ GraphQL::Field.accepts_definitions(
   includes: GraphQL::Define.assign_metadata_key(:includes)
 )
 
+GraphQL::ObjectType.accepts_definitions(
+  model: GraphQL::Define.assign_metadata_key(:model)
+)
+
 module GraphQLIncludable
   extend ActiveSupport::Concern
 
@@ -86,12 +90,13 @@ module GraphQLIncludable
   end
 
   def self.node_return_class(node)
-    # rubocop:disable Lint/HandleExceptions, Style/RedundantBegin
+    return_type = node_return_type(node)
+    # rubocop:disable Lint/HandleExceptions
     begin
-      Object.const_get(node_return_type(node).name)
+      return_type.metadata[:model] || Object.const_get(return_type.name)
     rescue NameError
     end
-    # rubocop:enable Lint/HandleExceptions, Style/RedundantBegin
+    # rubocop:enable Lint/HandleExceptions
   end
 
   def self.node_returns_active_record?(node)
@@ -124,13 +129,14 @@ module GraphQLIncludable
   # get a 1d array of the chain of delegated model names,
   # so if model A delegates method B to model C, which delegates method B to model D,
   # delegated_includes_chain(A, :B) => [:C, :D]
-  def self.delegated_includes_chain(model, method_name)
+  def self.delegated_includes_chain(base_model, method_name)
     chain = []
-    delegated_model_name = model.delegate_cache.try(:[], method_name.to_sym)
-    while delegated_model_name
-      chain << delegated_model_name
-      delegated_model = model_name_to_class(delegated_model_name)
-      delegated_model_name = delegated_model.delegate_cache.try(:[], method_name.to_sym)
+    method = method_name.to_sym
+    model_name = base_model.instance_variable_get('@delegate_cache').try(:[], method)
+    while model_name
+      chain << model_name
+      model = model_name_to_class(model_name)
+      model_name = model.instance_variable_get('@delegate_cache').try(:[], method)
     end
     chain
   end

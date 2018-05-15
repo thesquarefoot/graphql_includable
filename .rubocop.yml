@@ -14,6 +14,7 @@ Metrics/BlockLength:
   Max: 30
   ExcludedMethods:
     - describe
+    - shared_examples
 
 Metrics/LineLength:
   Max: 100

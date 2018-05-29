@@ -2,12 +2,17 @@ module GraphQLIncludable
   class Resolver
     # Returns the first node in the tree which returns a specific type
     def self.find_node_by_return_type(node, desired_return_type)
-      return_type = node.return_type.unwrap
+      return_type = node.return_type.unwrap.to_s
       return node if return_type == desired_return_type
       if node.respond_to?(:scoped_children)
-        node.scoped_children[return_type].find do |_child_name, child_node|
-          find_node_by_return_type(child_node, desired_return_type)
+        matching_node = nil
+        node.scoped_children.values.each do |selections|
+          matching_node = selections.values.find do |child_node|
+            find_node_by_return_type(child_node, desired_return_type)
+          end
+          break if matching_node
         end
+        matching_node
       end
     end
 
@@ -18,6 +23,7 @@ module GraphQLIncludable
       return_model = node_return_model(node)
       return [] if return_model.blank?
 
+      includes = []
       children = node.scoped_children[node.return_type.unwrap]
       nested_includes = {}
 
@@ -41,8 +47,9 @@ module GraphQLIncludable
       attribute_name = node_predicted_association_name(node)
       delegated_through = includes_delegated_through(parent_model, attribute_name)
       delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
-      (delegated_model || parent_model).reflect_on_association(association_name)
-      association = get_model_association(parent_model, attribute_name, interceding_includes)
+      association = (delegated_model || parent_model).reflect_on_association(attribute_name)
+      interceding_includes = []
+      # association = get_model_association(parent_model, attribute_name, interceding_includes)
 
       if association
         child_includes = includes_for_node(node)
@@ -54,7 +61,8 @@ module GraphQLIncludable
         #   edge_includes = array_to_nested_hash(edge_includes_chain)
         # end
       else
-        [array_to_nested_hash(interceding_includes), specified_includes].reject(&:blank?)
+        # TODO: specified includes?
+        [array_to_nested_hash(interceding_includes)].reject(&:blank?)
       end
     end
 

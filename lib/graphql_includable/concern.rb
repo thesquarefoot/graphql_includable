@@ -6,9 +6,8 @@ module GraphQLIncludable
 
     module ClassMethods
       def includes_from_graphql(ctx)
-        node = Resolver.find_node_by_return_type(ctx.irep_node, model_name)
+        node = Resolver.find_node_by_return_type(ctx.irep_node, name)
         generated_includes = Resolver.includes_for_node(node)
-        byebug if generated_includes == {}
         includes(generated_includes)
       rescue => e
         self

@@ -10,6 +10,7 @@ module GraphQLIncludable
         generated_includes = Resolver.includes_for_node(node)
         includes(generated_includes)
       rescue => e
+        Rails.logger.error(e)
         self
       end
 

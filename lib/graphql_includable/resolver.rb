@@ -104,10 +104,6 @@ module GraphQLIncludable
       def array_to_nested_hash(arr)
         arr.reverse.inject { |acc, item| { item => acc } } || {}
       end
-
-      # def node_is_relay_connection?(node)
-      #   node.return_type.unwrap.name =~ /Connection$/
-      # end
     end
   end
 end

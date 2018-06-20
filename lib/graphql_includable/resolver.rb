@@ -18,30 +18,12 @@ module GraphQLIncludable
       end
 
       # Translate a node's selections into `includes` values
-      # Combine and format children values
-      # Noop on nodes that don't return AR (so no associations to include)
       def includes_for_node(node)
         return_model = node_return_model(node)
         return [] if return_model.blank?
-
-        includes = []
         children = node.scoped_children[node.return_type.unwrap]
-        nested_includes = {}
-
-        children.each_value do |child_node|
-          child_includes = includes_for_child(child_node, return_model)
-
-          if child_includes.is_a?(Hash)
-            nested_includes.merge!(child_includes)
-          elsif child_includes.is_a?(Array)
-            includes += child_includes
-          else
-            includes << child_includes
-          end
-        end
-
-        includes << nested_includes if nested_includes.present?
-        includes.uniq
+        child_includes = children.map { |_key, child| includes_for_child(child, return_model) }
+        combine_child_includes(child_includes)
       end
 
       def includes_for_child(node, parent_model)
@@ -65,6 +47,22 @@ module GraphQLIncludable
           # TODO: specified includes?
           [array_to_nested_hash(interceding_includes)].reject(&:blank?)
         end
+      end
+
+      def combine_child_includes(child_includes)
+        includes = []
+        nested_includes = {}
+        child_includes.each do |child|
+          if child.is_a?(Hash)
+            nested_includes.merge!(child)
+          elsif child.is_a?(Array)
+            includes += child
+          else
+            includes << child
+          end
+        end
+        includes << nested_includes if nested_includes.present?
+        includes.uniq
       end
 
       def model_name_to_class(model_name)

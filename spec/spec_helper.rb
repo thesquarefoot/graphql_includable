@@ -3,84 +3,8 @@ require 'active_record'
 require 'graphql'
 require 'graphql_includable'
 
-class Apple < ActiveRecord::Base
-  include GraphQLIncludable
-  belongs_to :tree
-  has_many :worms
-
-  def juice
-    42
-  end
-end
-
-class Tree < ActiveRecord::Base
-  include GraphQLIncludable
-  has_many :apples
-  has_many :prefixedApples
-  has_one :tree_roots
-  delegate :worms, to: :apples
-
-  def fruit
-    apples
-  end
-end
-
-class TreeRoots < ActiveRecord::Base
-  include GraphQLIncludable
-  belongs_to :tree
-  delegate :worms, to: :tree
-end
-
-class Worm < ActiveRecord::Base
-  include GraphQLIncludable
-  belongs_to :apple
-end
-
-AppleType = GraphQL::ObjectType.define do
-  name 'Apple'
-  field :tree, !TreeType
-  field :seeds, !types[types.String]
-  field :juice, !types.Int
-end
-
-PrefixedAppleType = GraphQL::ObjectType.define do
-  name 'PrefixedApple'
-  model Apple
-  field :tree, !TreeType
-end
-
-PrefixedTreeType = GraphQL::ObjectType.define do
-  name 'PrefixedTree'
-  model Tree
-  field :apples, !types[!PrefixedAppleType]
-end
-
-TreeType = GraphQL::ObjectType.define do
-  name 'Tree'
-  field :apples, !types[!AppleType]
-  field :yabloki, !types[!AppleType], property: :apples
-  field :worms, !types[!WormType]
-  field :fruit, types[AppleType], includes: :apples
-  field :fruitWithTree, types[AppleType], includes: { apples: [:tree] }, property: :fruit
-  field :roots, !TreeRootsType, property: :tree_roots
-end
-
-TreeRootsType = GraphQL::ObjectType.define do
-  name 'TreeRoots'
-  field :tree, !TreeType
-  field :worms, !types[!WormType]
-end
-
-WormType = GraphQL::ObjectType.define do
-  name 'Worm'
-  field :apple, !AppleType
-end
-
-OrchardType = GraphQL::ObjectType.define do
-  name 'Orchard'
-  field :name, !types.String
-  field :trees, !types[!TreeType]
-end
+require 'test_models'
+require 'test_schema'
 
 private_includes = nil
 
@@ -92,13 +16,13 @@ shared_examples 'graphql' do
       name 'TestQuery'
       field :apple, AppleType do
         resolve ->(_obj, _args, ctx) do
-          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'Apple')
+          private_includes = Apple.all.includes_from_graphql(ctx).includes_values
           nil
         end
       end
       field :tree, TreeType do
         resolve ->(_obj, _args, ctx) do
-          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'Tree')
+          private_includes = Tree.all.includes_from_graphql(ctx).includes_values
           nil
         end
       end
@@ -110,7 +34,7 @@ shared_examples 'graphql' do
       end
       field :orchard, OrchardType do
         resolve ->(_obj, _args, ctx) do
-          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'Tree')
+          private_includes = Tree.all.includes_from_graphql(ctx).includes_values
           nil
         end
       end
@@ -121,4 +45,28 @@ shared_examples 'graphql' do
       resolve_type ->(_type, obj, _ctx) { Object.const_get("#{obj.class}Type") }
     end
   end
+end
+
+def mock_schema_with_fields(fields)
+  base_query = GraphQL::ObjectType.define do
+    fields.each do |key, object_type|
+      field key.to_sym, object_type do
+        resolve ->(_obj, _args, ctx) do
+          42
+        end
+      end
+    end
+  end
+  GraphQL::Schema.define(query: base_query) do
+    resolve_type ->(_type, obj, _ctx) {
+      Object.const_get("#{obj.class}Type")
+    }
+  end
+end
+
+def irep_selection_from_query(schema, query)
+  q = GraphQL::Query.new(schema, query)
+  validator = GraphQL::StaticValidation::Validator.new(schema: schema)
+  byebug
+  validator.validate(q)[:irep].operation_definitions.first.last
 end

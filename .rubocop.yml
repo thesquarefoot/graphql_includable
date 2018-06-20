@@ -1,7 +1,14 @@
+AllCops:
+  TargetRubyVersion: 2.4
+  DisplayCopNames: true
+
 Style/Documentation:
   Enabled: false
 
 Style/Lambda:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
   Enabled: false
 
 Metrics/AbcSize:

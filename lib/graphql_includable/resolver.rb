@@ -1,3 +1,5 @@
+require 'byebug'
+
 module GraphQLIncludable
   class Resolver
     class << self
@@ -26,13 +28,14 @@ module GraphQLIncludable
         combine_child_includes(child_includes)
       end
 
+      # Check each child of a node for a preloadable association
       def includes_for_child(node, parent_model)
-        attribute_name = node_predicted_association_name(node)
+        attribute_name = node_includes_source_from_metadata(node)
+        return attribute_name if attribute_name.is_a?(Hash)
         delegated_through = includes_delegated_through(parent_model, attribute_name)
         delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
         association = (delegated_model || parent_model).reflect_on_association(attribute_name)
-        interceding_includes = []
-        # association = get_model_association(parent_model, attribute_name, interceding_includes)
+        interceding_includes = delegated_through.present? ? delegated_through : []
 
         if association
           child_includes = includes_for_node(node)
@@ -44,7 +47,6 @@ module GraphQLIncludable
           #   edge_includes = array_to_nested_hash(edge_includes_chain)
           # end
         else
-          # TODO: specified includes?
           [array_to_nested_hash(interceding_includes)].reject(&:blank?)
         end
       end
@@ -89,7 +91,7 @@ module GraphQLIncludable
       end
 
       # Predict the association name to include from a field's metadata
-      def node_predicted_association_name(node)
+      def node_includes_source_from_metadata(node)
         definition = node.definitions.first
         definition.metadata[:includes] || (definition.property || definition.name).to_sym
       end

@@ -9,13 +9,17 @@ module GraphQLIncludable
       # Main entry point of the concern, to be called from top-level fields
       # Accepts a graphql-ruby query context, preloads, and returns itself
       def includes_from_graphql(ctx)
-        node = Resolver.find_node_by_return_type(ctx.irep_node, name)
-        generated_includes = Resolver.includes_for_node(node)
+        node = GraphQLIncludable::Resolver.find_node_by_return_type(ctx.irep_node, name)
+        generated_includes = GraphQLIncludable::Resolver.includes_for_node(node)
         includes(generated_includes)
       rescue => e
         # As this feature is just for a performance gain, it should never
         # fail destructively, so catch and log all exceptions, but continue
-        Rails.logger.error(e)
+        if Rails && Rails.env.development?
+          raise e
+        else
+          puts e, e.backtrace.join('\n')
+        end
         self
       end
 

@@ -49,6 +49,11 @@ module GraphQLIncludable
         end
       end
 
+      # Format child includes into a data structure that can be preloaded
+      # Singular terminal nodes become symbols,
+      # multiple terminal nodes become arrays of symbols,
+      # and branching nodes become hashes.
+      # The result can be passed directly into ActiveModel::Base.includes
       def combine_child_includes(child_includes)
         includes = []
         nested_includes = {}
@@ -65,6 +70,8 @@ module GraphQLIncludable
         includes.uniq
       end
 
+      # Retrieve the Ruby class for a model by name
+      # Attempts to singularize the name if not found
       def model_name_to_class(model_name)
         begin
           model_name.to_s.camelize.constantize
@@ -81,6 +88,7 @@ module GraphQLIncludable
       rescue NameError
       end
 
+      # Predict the association name to include from a field's metadata
       def node_predicted_association_name(node)
         definition = node.definitions.first
         definition.metadata[:includes] || (definition.property || definition.name).to_sym

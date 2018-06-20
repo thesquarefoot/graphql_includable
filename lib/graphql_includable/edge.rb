@@ -1,5 +1,6 @@
 module GraphQLIncludable
   class Edge < GraphQL::Relay::Edge
+    # Retrieve the record representing the edge between node and parent
     def edge_record
       return @edge_record if @edge_record.present?
 
@@ -18,6 +19,7 @@ module GraphQLIncludable
       @edge_record = selector
     end
 
+    # Delegate method calls on this Edge instance to the ActiveRecord instance
     def method_missing(method_name, *args, &block)
       return super unless edge_record.respond_to?(method_name)
       edge_record.send(method_name, *args, &block)
@@ -28,6 +30,8 @@ module GraphQLIncludable
     end
 
     private
+
+    # List all HasManyThrough associations between node and parent models
     def associations_between_node_and_parent
       return @associations if @associations.present?
 
@@ -42,6 +46,7 @@ module GraphQLIncludable
       @associations = associations
     end
 
+    # List the key:value criteria for finding the edge record in the database
     def where_hash_for_edge(edge_class, association_names)
       root_association_key = self.class.class_to_str(parent.class)
       unless edge_class.reflections.keys.include?(root_association_key)

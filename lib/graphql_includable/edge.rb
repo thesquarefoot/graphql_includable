@@ -1,7 +1,7 @@
 module GraphQLIncludable
   class Edge < GraphQL::Relay::Edge
-    def edge
-      return @edge if @edge
+    def edge_record
+      return @edge_record if @edge_record.present?
 
       all_association_names = associations_between_node_and_parent
       first_association_name = all_association_names.shift
@@ -15,19 +15,16 @@ module GraphQLIncludable
       selector = selector.merge(edge_class.joins(root_association_key.to_sym)) unless is_polymorphic
       selector = selector.find_by(where_hash_for_edge(edge_class, all_association_names))
 
-      @edge ||= selector
+      @edge_record = selector
     end
 
     def method_missing(method_name, *args, &block)
-      if edge.respond_to?(method_name)
-        edge.send(method_name, *args, &block)
-      else
-        super
-      end
+      return super unless edge_record.respond_to?(method_name)
+      edge_record.send(method_name, *args, &block)
     end
 
     def respond_to_missing(method_name, include_private = false)
-      edge.respond_to?(method_name) || super
+      edge_record.respond_to?(method_name) || super
     end
 
     private

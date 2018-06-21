@@ -33,8 +33,8 @@ describe GraphQLIncludable::Resolver do
       expect(subject.class.combine_child_includes(input)).to match_array(expected)
     end
     it 'flatterns plural terminal nodes' do
-      input = [[1,2,3], [4,5,6], [7,8,9]]
-      expected = [1,2,3,4,5,6,7,8,9]
+      input = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+      expected = [1, 2, 3, 4, 5, 6, 7, 8, 9]
       expect(subject.class.combine_child_includes(input)).to match_array(expected)
     end
     it 'combines multiple branching nodes into a single hash' do
@@ -116,7 +116,8 @@ describe GraphQLIncludable::Resolver do
       end
 
       it 'returns an empty array' do
-        expect(GraphQLIncludable::Resolver.includes_delegated_through(self.class::TestModel, :delegated_method)).to eq([])
+        actual = GraphQLIncludable::Resolver.includes_delegated_through(self.class::TestModel, :delegated_method)
+        expect(actual).to eq([])
       end
     end
 
@@ -127,14 +128,17 @@ describe GraphQLIncludable::Resolver do
       end
 
       it 'returns an array of delegated models' do
-        expect(GraphQLIncludable::Resolver.includes_delegated_through(self.class::TestModel, :delegated_method)).to eq([:other_model])
+        actual = GraphQLIncludable::Resolver.includes_delegated_through(self.class::TestModel, :delegated_method)
+        expect(actual).to eq([:other_model])
       end
     end
   end
 
   describe '.array_to_nested_hash' do
     it 'reduces an array to a hash' do
-      expect(GraphQLIncludable::Resolver.array_to_nested_hash([1,2,3])).to eq({ 1 => { 2 => 3 } })
+      input = [1, 2, 3]
+      expected = { 1 => { 2 => 3 } }
+      expect(GraphQLIncludable::Resolver.array_to_nested_hash(input)).to eq(expected)
     end
     it 'converts an empty array to an empty hash' do
       expect(GraphQLIncludable::Resolver.array_to_nested_hash([])).to eq({})

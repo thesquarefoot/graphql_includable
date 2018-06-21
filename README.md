@@ -1,8 +1,8 @@
 # graphql_includable
-> Eager-load graphql-ruby query data using Rails models
+> Preload ActiveRecord data in GraphQL queries
 
-graphql_includable is an `ActiveSupport::Concern` for use with data models.
-When resolving a GraphQL query with this model at the root, graphql_includable will eager-load all queried models using [`ActiveRecord::QueryMethods::includes`](https://apidock.com/rails/ActiveRecord/QueryMethods/includes).
+graphql_includable is an `ActiveSupport::Concern` for preloading `ActiveRecord` data when executing GraphQL queries from `graphql-ruby`.
+When resolving a GraphQL query with this model at the root, graphql_includable will preload all queried models using [`ActiveRecord::QueryMethods::includes`](https://apidock.com/rails/ActiveRecord/QueryMethods/includes).
 
 ## Usage
 
@@ -37,7 +37,8 @@ When resolving this query, `apples` will be preloaded (using `Tree.includes(:app
 ### Overrides
 
 This gem attempts to detect what associations you want to preload by the field's name or its `property` attribute.
-If this is inaccurate or ineffective, you can specify what to include in the field definition.
+If this is inaccurate or ineffective, you can specify what to include in the field definition using the `includes` key.
+If this points to an ActiveRecord association, further includes in the query will be nested within it.
 
 ```ruby
 TreeType = GraphQL::ObjectType.define do

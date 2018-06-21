@@ -28,11 +28,10 @@ NodeType = GraphQL::ObjectType.define do
   field :test_node_field, !types.Boolean
 end
 
-describe GraphQLIncludable::Edge do
+xdescribe GraphQLIncludable::Edge do
   context 'connecting a HasManyThroughAssociation' do
     describe 'a method called by the EdgeType' do
       it 'is resolved through the ActiveRecord join model' do
-
       end
     end
   end

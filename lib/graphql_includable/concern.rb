@@ -1,9 +1,11 @@
 require 'active_support/concern'
+require 'logger'
 
 module GraphQLIncludable
   # ActiveSupport::Concern to include onto GraphQL-mapped models
   module Concern
     extend ActiveSupport::Concern
+    # logger = Logger.new(STDOUT)
 
     module ClassMethods
       # Main entry point of the concern, to be called from top-level fields
@@ -15,11 +17,8 @@ module GraphQLIncludable
       rescue => e
         # As this feature is just for a performance gain, it should never
         # fail destructively, so catch and log all exceptions, but continue
-        if Rails && Rails.env.development?
-          raise e
-        else
-          puts e, e.backtrace.join('\n')
-        end
+        raise e if Rails && Rails.env.development?
+        logger.info(e, e.backtrace.join('\n'))
         self
       end
 

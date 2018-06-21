@@ -4,19 +4,28 @@ module GraphQLIncludable
     def edge_record
       return @edge_record if @edge_record.present?
 
-      all_association_names = associations_between_node_and_parent
-      first_association_name = all_association_names.shift
-      other_association_names = all_association_names.map { |s| s.to_s.singularize }
-
-      edge_class = self.class.str_to_class(first_association_name)
-      is_polymorphic = edge_class.reflections.none? { |k, r| r.polymorphic? }
+      first_association, *nested_associations = associations_between_node_and_parent
+      edge_class = self.class.str_to_class(first_association)
+      root_association_key = root_association_key(edge_class)
 
       selector = edge_class
-      selector = selector.merge(edge_class.includes(*other_association_names)) if other_association_names.present?
-      selector = selector.merge(edge_class.joins(root_association_key.to_sym)) unless is_polymorphic
-      selector = selector.find_by(where_hash_for_edge(edge_class, all_association_names))
 
-      @edge_record = selector
+      if nested_associations.present?
+        nested_association_names = nested_associations.map { |s| s.to_s.singularize }
+        selector = selector.merge(edge_class.includes(*nested_association_names))
+      end
+
+      if class_polymorphic?(edge_class)
+        selector = selector.merge(edge_class.joins(root_association_key))
+      end
+
+      @edge_record = selector.find_by(
+        where_hash_for_edge(root_association_key, nested_associations)
+      )
+    end
+
+    def class_polymorphic?(klass)
+      klass.reflections.any? { |_k, r| r.polymorphic? }
     end
 
     # Delegate method calls on this Edge instance to the ActiveRecord instance
@@ -25,7 +34,7 @@ module GraphQLIncludable
       edge_record.send(method_name, *args, &block)
     end
 
-    def respond_to_missing(method_name, include_private = false)
+    def respond_to_missing?(method_name, include_private = false)
       edge_record.respond_to?(method_name) || super
     end
 
@@ -47,26 +56,29 @@ module GraphQLIncludable
     end
 
     # List the key:value criteria for finding the edge record in the database
-    def where_hash_for_edge(edge_class, association_names)
-      root_association_key = self.class.class_to_str(parent.class)
-      unless edge_class.reflections.keys.include?(root_association_key)
-        root_association_key = edge_class.reflections.select { |k, r| r.polymorphic? }.keys.first
-      end
-      root_include = { root_association_key.to_sym => [parent] }
-
+    def where_hash_for_edge(root_key, nested_associations)
+      root_include = { root_key => [parent] }
       terminal_include = { self.class.class_to_str(node.class) => node }
-      association_names.reverse.each do |rel_name|
-        terminal_include = { rel_name.to_s.pluralize => terminal_include }
+      inner_includes = nested_associations.reverse.reduce(terminal_include) do |acc, rel_name|
+        { rel_name.to_s.pluralize => acc }
       end
+      root_include.merge(inner_includes)
+    end
 
-      root_include.merge(terminal_include)
+    def root_association_key(edge_class)
+      key = self.class.class_to_str(parent.class)
+      unless edge_class.reflections.keys.include?(key)
+        key = edge_class.reflections.select { |_k, r| r.polymorphic? }.keys.first
+      end
+      key.to_sym
     end
 
     class << self
       private
+
       def str_to_class(str)
         str.to_s.singularize.camelize.constantize
-      rescue
+      rescue # rubocop:disable Lint/HandleExceptions
       end
 
       def class_to_str(klass)

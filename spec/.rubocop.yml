@@ -1,8 +1,5 @@
 AllCops:
   DisplayCopNames: true
-  Exclude:
-    - '*.gemspec'
-    - Gemfile
 
 Style/Documentation:
   Enabled: false
@@ -13,6 +10,9 @@ Style/Lambda:
 Style/FrozenStringLiteralComment:
   Enabled: false
 
+Style/ClassAndModuleChildren:
+  Enabled: false
+
 Metrics/AbcSize:
   Max: 20
 
@@ -21,9 +21,12 @@ Metrics/MethodLength:
 
 Metrics/BlockLength:
   Max: 30
+  ExcludedMethods:
+    - describe
+    - shared_examples
 
 Metrics/LineLength:
-  Max: 100
+  Max: 120
 
 Metrics/ModuleLength:
   Max: 150

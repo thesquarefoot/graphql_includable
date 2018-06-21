@@ -1,40 +1,5 @@
 require 'graphql_includable'
 
-"""
-Prose testing plan (to review)
-
-basic AR:
-  has_one   { a { b { id } } } -> a.includes_from_graphql -> [:b]
-  has_many  { b { as { id } } } -> b.includes_from_graphql -> [:as]
-  has_one w/ property: property: :c -> a.includes_from_graphql -> [:c]
-  has_many_through
-  has_many_through polymorphic
-nested AR -- AR has_N -> has_N nested  { a { b { as { id } } } } -> a.includes_from_graphql -> [{ b: [:as] }]
-delegated AR
-nested delegated AR
-overrides:
-  includes: :some_assn_by_name (vals should pass through using an association by name)
-  includes: :arbitrary_val (vals neednt pass through if not an assn, but include the arbitrary val)
-  includes: { some: :hash } (hash vals included arbitrarily)
-multiple base field - finds first field returning type    { a { b { id } } b { a { id } } c { a { id } } } -> a.includes_from_graphql -> [:b]
-edges calls methods on resolve on correct model/record in has_many_through relations
-edges calls methods on resolve on correct model/record in has_many_through relations for polymorphic types
-
-
-
-
-
-class BaseExampleClass
-  has_one :singular
-  has_many :plurals
-  has_many :plurals_by_any_other_name
-  has_many :edges
-  has_many :target_nodes, through: :edges
-  has_many :things, as: :thingable, polymorphic: true
-  delegate :delegated_method, to: :singular
-end
-"""
-
 RSpec.describe GraphQLIncludable, type: :concern do
   include_examples 'graphql'
 

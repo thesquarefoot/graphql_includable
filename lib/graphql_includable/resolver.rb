@@ -7,16 +7,15 @@ module GraphQLIncludable
       def find_node_by_return_type(node, desired_return_type)
         return_type = node.return_type.unwrap.to_s
         return node if return_type == desired_return_type
-        if node.respond_to?(:scoped_children)
-          matching_node = nil
-          node.scoped_children.values.each do |selections|
-            matching_node = selections.values.find do |child_node|
-              find_node_by_return_type(child_node, desired_return_type)
-            end
-            break if matching_node
+        return unless node.respond_to?(:scoped_children)
+        matching_node = nil
+        node.scoped_children.values.each do |selections|
+          matching_node = selections.values.find do |child_node|
+            find_node_by_return_type(child_node, desired_return_type)
           end
-          matching_node
+          break if matching_node
         end
+        matching_node
       end
 
       # Translate a node's selections into `includes` values
@@ -39,11 +38,14 @@ module GraphQLIncludable
 
         if association
           child_includes = includes_for_node(node)
-          array_to_nested_hash(interceding_includes + [attribute_name, child_includes].reject(&:blank?))
+          includes_array = interceding_includes + [attribute_name, child_includes].reject(&:blank?)
+          array_to_nested_hash(includes_array)
           # if node_is_relay_connection?(node)
           #   join_name = association.options[:through]
           #   edge_includes_chain = [association.name]
-          #   edge_includes_chain << child_includes.pop[association.name.to_s.singularize.to_sym] if child_includes.last&.is_a?(Hash)
+          #   if child_includes.last&.is_a?(Hash)
+          #     edge_includes_chain << child_includes.pop[association.name.to_s.singularize.to_sym]
+          #   end
           #   edge_includes = array_to_nested_hash(edge_includes_chain)
           # end
         else
@@ -80,14 +82,15 @@ module GraphQLIncludable
         rescue NameError
           model_name.to_s.singularize.camelize.constantize
         end
-      rescue
+      rescue # rubocop:disable Lint/HandleExceptions
       end
 
       # Translate a node's return type to an ActiveRecord model
+      REGEX_CLEAN_GQL_TYPE_NAME = /(^SquareFoot|Edge$|Connection$)/
       def node_return_model(node)
-        model = Object.const_get(node.return_type.unwrap.name.gsub(/(^SquareFoot|Edge$|Connection$)/, ''))
+        model = Object.const_get(node.return_type.unwrap.name.gsub(REGEX_CLEAN_GQL_TYPE_NAME, ''))
         model if model < ActiveRecord::Base
-      rescue NameError
+      rescue NameError # rubocop:disable Lint/HandleExceptions
       end
 
       # Predict the association name to include from a field's metadata

@@ -4,27 +4,35 @@ module GraphQLIncludable
     def edge_record
       return @edge_record if @edge_record.present?
 
-      first_association, *nested_associations = associations_between_node_and_parent
-      edge_class = self.class.str_to_class(first_association)
-      root_association_key = root_association_key(edge_class)
+      record_set = associations_between_node_and_parent.reverse.reduce(parent) { |acc, cur| acc.send(cur) }
+      if record_set.loaded?
+        @edge_record ||= record_set.first do |rec|
+          rec.send(root_association_key) == parent &&
+          rec.send(node.class.name.downcase.to_sym) == node
+        end
+      else
+        first_association, *nested_associations = associations_between_node_and_parent
+        edge_class = self.class.str_to_class(first_association)
+        root_association_key = root_association_key(edge_class)
 
-      selector = edge_class
+        selector = edge_class
 
-      if nested_associations.present?
-        nested_association_names = nested_associations.map { |s| s.to_s.singularize }
-        selector = selector.merge(edge_class.includes(*nested_association_names))
+        if nested_associations.present?
+          nested_association_names = nested_associations.map { |s| s.to_s.singularize }
+          selector = selector.merge(edge_class.includes(*nested_association_names))
+        end
+
+        if class_is_polymorphic?(edge_class)
+          selector = selector.merge(edge_class.joins(root_association_key))
+        end
+
+        @edge_record = selector.find_by(
+          where_hash_for_edge(root_association_key, nested_associations)
+        )
       end
-
-      if class_polymorphic?(edge_class)
-        selector = selector.merge(edge_class.joins(root_association_key))
-      end
-
-      @edge_record = selector.find_by(
-        where_hash_for_edge(root_association_key, nested_associations)
-      )
     end
 
-    def class_polymorphic?(klass)
+    def class_is_polymorphic?(klass)
       klass.reflections.any? { |_k, r| r.polymorphic? }
     end
 

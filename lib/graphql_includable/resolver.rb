@@ -31,50 +31,47 @@ module GraphQLIncludable
       def includes_for_child(node, parent_model)
         included_attributes = node_includes_source_from_metadata(node)
         return included_attributes if included_attributes.is_a?(Hash)
-        included_attributes = included_attributes.is_a?(Array) ? included_attributes : [included_attributes]
+        included_attributes = [included_attributes] unless included_attributes.is_a?(Array)
         includes = included_attributes.map do |attribute_name|
-          delegated_through = includes_delegated_through(parent_model, attribute_name)
-          delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
-          association = (delegated_model || parent_model).reflect_on_association(attribute_name)
-          includes_array = delegated_through.present? ? delegated_through : []
-
-          if association
-            if node_is_relay_connection?(node)
-              includes_array << includes_for_child_through_relay_connection(node, attribute_name, association.options[:through])
-            else
-              includes_array += [attribute_name, includes_for_node(node)]
-            end
-          end
-          array_to_nested_hash(includes_array)
+          includes_for_child_for_attribute(node, parent_model, attribute_name)
         end
         includes.size == 1 ? includes.first : includes
       end
 
+      def includes_for_child_for_attribute(node, parent_model, attribute_name)
+        includes_array = includes_delegated_through(parent_model, attribute_name)
+        target_model = model_name_to_class(includes_array.last) || parent_model
+        association = target_model.reflect_on_association(attribute_name)
+
+        if association && node_is_relay_connection?(node)
+          includes_array << includes_for_relay_child(node, attribute_name, association)
+        elsif association
+          includes_array += [attribute_name, includes_for_node(node)]
+        end
+        array_to_nested_hash(includes_array)
+      end
+
       # Resolve includes through 'edges' and 'nodes' fields of Relay Connection types
-      def includes_for_child_through_relay_connection(node, attribute_name, through_association_name)
+      def includes_for_relay_child(node, attribute_name, association)
         children = node.scoped_children[node.return_type.unwrap]
 
-        edges_includes = []
-        nodes_includes = []
+        edge_data = flat_includes_for_relay_edges(children['edges'], attribute_name, association)
+        leaf_data = [attribute_name, includes_for_node(node)] if children['nodes']
 
-        if children['edges']
-          leaf_includes = [attribute_name.to_s.singularize.to_sym]
-          edge_children = children['edges'].scoped_children[children['edges'].return_type.unwrap]
-          if edge_children['node']
-            leaf_includes << includes_for_node(edge_children['node'])
-          end
-          leaf_includes = array_to_nested_hash(leaf_includes)
+        [array_to_nested_hash(edge_data), array_to_nested_hash(leaf_data)].reject(&:blank?)
+      end
 
-          edges_includes << through_association_name
-          edges_includes << [*includes_for_node(children['edges']), leaf_includes]
+      # Resolve associations through a relay Edge, which may itself contain nodes
+      def flat_includes_for_relay_edges(node, attribute_name, association)
+        return unless node
+        leaf_includes = [attribute_name.to_s.singularize.to_sym]
+        edge_children = node.scoped_children[node.return_type.unwrap]
+        if edge_children['node']
+          leaf_includes << includes_for_node(edge_children['node'])
         end
+        leaf_includes = array_to_nested_hash(leaf_includes)
 
-        if children['nodes']
-          nodes_includes << attribute_name
-          nodes_includes << includes_for_node(children['nodes'])
-        end
-
-        [array_to_nested_hash(edges_includes), array_to_nested_hash(nodes_includes)].reject(&:blank?)
+        [association.options[:through], [*includes_for_node(node), leaf_includes]]
       end
 
       # Format child includes into a data structure that can be preloaded

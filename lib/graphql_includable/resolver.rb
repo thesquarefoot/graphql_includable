@@ -29,28 +29,52 @@ module GraphQLIncludable
 
       # Check each child of a node for a preloadable association
       def includes_for_child(node, parent_model)
-        attribute_name = node_includes_source_from_metadata(node)
-        return attribute_name if attribute_name.is_a?(Hash)
-        delegated_through = includes_delegated_through(parent_model, attribute_name)
-        delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
-        association = (delegated_model || parent_model).reflect_on_association(attribute_name)
-        interceding_includes = delegated_through.present? ? delegated_through : []
+        included_attributes = node_includes_source_from_metadata(node)
+        return included_attributes if included_attributes.is_a?(Hash)
+        included_attributes = included_attributes.is_a?(Array) ? included_attributes : [included_attributes]
+        includes = included_attributes.map do |attribute_name|
+          delegated_through = includes_delegated_through(parent_model, attribute_name)
+          delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
+          association = (delegated_model || parent_model).reflect_on_association(attribute_name)
+          includes_array = delegated_through.present? ? delegated_through : []
 
-        if association
-          child_includes = includes_for_node(node)
-          includes_array = interceding_includes + [attribute_name, child_includes].reject(&:blank?)
+          if association
+            if node_is_relay_connection?(node)
+              includes_array << includes_for_child_through_relay_connection(node, attribute_name, association.options[:through])
+            else
+              includes_array += [attribute_name, includes_for_node(node)]
+            end
+          end
           array_to_nested_hash(includes_array)
-          # if node_is_relay_connection?(node)
-          #   join_name = association.options[:through]
-          #   edge_includes_chain = [association.name]
-          #   if child_includes.last&.is_a?(Hash)
-          #     edge_includes_chain << child_includes.pop[association.name.to_s.singularize.to_sym]
-          #   end
-          #   edge_includes = array_to_nested_hash(edge_includes_chain)
-          # end
-        else
-          [array_to_nested_hash(interceding_includes)].reject(&:blank?)
         end
+        includes.size == 1 ? includes.first : includes
+      end
+
+      # Resolve includes through 'edges' and 'nodes' fields of Relay Connection types
+      def includes_for_child_through_relay_connection(node, attribute_name, through_association_name)
+        children = node.scoped_children[node.return_type.unwrap]
+
+        edges_includes = []
+        nodes_includes = []
+
+        if children['edges']
+          leaf_includes = [attribute_name.to_s.singularize.to_sym]
+          edge_children = children['edges'].scoped_children[children['edges'].return_type.unwrap]
+          if edge_children['node']
+            leaf_includes << includes_for_node(edge_children['node'])
+          end
+          leaf_includes = array_to_nested_hash(leaf_includes)
+
+          edges_includes << through_association_name
+          edges_includes << [*includes_for_node(children['edges']), leaf_includes]
+        end
+
+        if children['nodes']
+          nodes_includes << attribute_name
+          nodes_includes << includes_for_node(children['nodes'])
+        end
+
+        [array_to_nested_hash(edges_includes), array_to_nested_hash(nodes_includes)].reject(&:blank?)
       end
 
       # Format child includes into a data structure that can be preloaded
@@ -93,6 +117,11 @@ module GraphQLIncludable
       rescue NameError # rubocop:disable Lint/HandleExceptions
       end
 
+      REGEX_RELAY_CONNECTION = /Connection$/
+      def node_is_relay_connection?(node)
+        node.return_type.unwrap.name =~ REGEX_RELAY_CONNECTION
+      end
+
       # Predict the association name to include from a field's metadata
       def node_includes_source_from_metadata(node)
         definition = node.definitions.first
@@ -115,7 +144,7 @@ module GraphQLIncludable
 
       # Right-reduce an array into a nested hash
       def array_to_nested_hash(arr)
-        arr.reverse.inject { |acc, item| { item => acc } } || {}
+        arr.reject(&:blank?).reverse.inject { |acc, item| { item => acc } } || {}
       end
     end
   end

@@ -74,8 +74,6 @@ module GraphQLIncludable
     end
 
     class << self
-      private
-
       def str_to_class(str)
         str.to_s.singularize.camelize.constantize
       rescue # rubocop:disable Lint/HandleExceptions

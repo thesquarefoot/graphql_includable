@@ -92,7 +92,7 @@ module GraphQLIncludable
           end
         end
         includes << nested_includes if nested_includes.present?
-        includes.uniq
+        includes.uniq.reject(&:blank?)
       end
 
       # Retrieve the Ruby class for a model by name
@@ -141,7 +141,9 @@ module GraphQLIncludable
 
       # Right-reduce an array into a nested hash
       def array_to_nested_hash(arr)
-        arr.reject(&:blank?).reverse.inject { |acc, item| { item => acc } } || {}
+        (arr || []).reject(&:blank?)
+                   .reverse
+                   .inject { |acc, item| { item => acc } }
       end
     end
   end

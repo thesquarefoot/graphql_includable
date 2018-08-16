@@ -1,5 +1,3 @@
-require 'byebug'
-
 module GraphQLIncludable
   class Resolver
     class << self

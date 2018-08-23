@@ -9,6 +9,7 @@ module GraphQLIncludable
     module ClassMethods
       # Main entry point of the concern, to be called from top-level fields
       # Accepts a graphql-ruby query context, preloads, and returns itself
+      # @param ctx GraphQL::Query::Context
       def includes_from_graphql(ctx)
         node = GraphQLIncludable::Resolver.find_node_by_return_type(ctx.irep_node, name)
         generated_includes = GraphQLIncludable::Resolver.includes_for_node(node)

@@ -26,12 +26,6 @@ shared_examples 'graphql' do
           nil
         end
       end
-      field :prefixedTree, PrefixedTreeType do
-        resolve ->(_obj, _args, ctx) do
-          private_includes = GraphQLIncludable.generate_includes_from_graphql(ctx, 'PrefixedTree')
-          nil
-        end
-      end
       field :orchard, OrchardType do
         resolve ->(_obj, _args, ctx) do
           private_includes = Tree.all.includes_from_graphql(ctx).includes_values

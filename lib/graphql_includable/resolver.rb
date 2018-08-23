@@ -141,7 +141,7 @@ module GraphQLIncludable
       def array_to_nested_hash(arr)
         (arr || []).reject(&:blank?)
                    .reverse
-                   .inject { |acc, item| { item => acc } }
+                   .inject { |acc, item| { item => acc } } || {}
       end
     end
   end

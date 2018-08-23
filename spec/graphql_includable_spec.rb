@@ -52,11 +52,4 @@ RSpec.describe GraphQLIncludable, type: :concern do
       expect(includes).to eq([{ apples: [:tree] }])
     end
   end
-
-  context 'when explicitly defining model names' do
-    it 'resolves using the defined model name' do
-      schema.execute('{ prefixedTree { apples { __typename } } }')
-      expect(includes).to eq([:apples])
-    end
-  end
 end

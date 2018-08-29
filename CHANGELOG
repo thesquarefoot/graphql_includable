@@ -1,5 +1,11 @@
+0.2.9
+  - lots more test coverage
+
 0.2.8
   - fix associations over relay connections (still not working automatically, but won't blow up)
+
+0.2.7
+  - (broken build)
 
 0.2.6
   - fix rails introspection using strings instead of symbols

@@ -1,78 +1,89 @@
 module GraphQLIncludable
   class Edge < GraphQL::Relay::Edge
-    def edge
-      return @edge if @edge
-      join_chain = joins_along_edge
-      edge_class_name = join_chain.shift
-      edge_class = str_to_class(edge_class_name)
+    # Retrieve the record representing the edge between node and parent
+    def edge_record
+      return @edge_record if @edge_record.present?
 
-      root_association_key = class_to_str(parent.class)
-      unless edge_class.reflections.keys.include?(root_association_key)
-        is_polymorphic = true
-        root_association_key = edge_class.reflections.select { |k, r| r.polymorphic? }.keys.first
-      end
-      root_node = { root_association_key.to_sym => [parent] }
-      terminal_node = { class_to_str(node.class) => node }
-      join_chain.reverse.each do |rel_name|
-        terminal_node = { rel_name.to_s.pluralize => terminal_node }
+      first_association, *nested_associations = associations_between_node_and_parent
+      edge_class = self.class.str_to_class(first_association)
+      root_association_key = root_association_key(edge_class)
+
+      selector = edge_class
+
+      if nested_associations.present?
+        nested_association_names = nested_associations.map { |s| s.to_s.singularize }
+        selector = selector.merge(edge_class.includes(*nested_association_names))
       end
 
-      search_hash = root_node.merge(terminal_node)
-      edge_includes = join_chain.map { |s| s.to_s.singularize }
-      edge_class = edge_class.includes(*edge_includes) unless edge_includes.empty?
-      edge_class = edge_class.joins(root_association_key.to_sym) unless is_polymorphic
-      @edge ||= edge_class.find_by(search_hash)
+      if class_polymorphic?(edge_class)
+        selector = selector.merge(edge_class.joins(root_association_key))
+      end
+
+      @edge_record = selector.find_by(
+        where_hash_for_edge(root_association_key, nested_associations)
+      )
     end
 
+    def class_polymorphic?(klass)
+      klass.reflections.any? { |_k, r| r.polymorphic? }
+    end
+
+    # Delegate method calls on this Edge instance to the ActiveRecord instance
     def method_missing(method_name, *args, &block)
-      if edge.respond_to?(method_name)
-        edge.send(method_name, *args, &block)
-      else
-        super
-      end
+      return super unless edge_record.respond_to?(method_name)
+      edge_record.send(method_name, *args, &block)
     end
 
-    def respond_to_missing(method_name, include_private = false)
-      edge.respond_to?(method_name) || super
+    def respond_to_missing?(method_name, include_private = false)
+      edge_record.respond_to?(method_name) || super
     end
 
     private
 
-    def str_to_class(str)
-      str.to_s.singularize.camelize.constantize
-    rescue
-    end
+    # List all HasManyThrough associations between node and parent models
+    def associations_between_node_and_parent
+      return @associations if @associations.present?
 
-    def class_to_str(klass)
-      klass.name.downcase
-    end
-
-    def joins_along_edge
-      # node.edges
-      # edge.node
-      # edge.parent
-      # parent.edges
-      # node.parents
-      # parent.nodes
-      edge_association_name = node.class.name.pluralize.downcase.to_sym
-      edge_association = parent.class.reflect_on_association(edge_association_name)
-      edge_joins = []
-      while edge_association.is_a? ActiveRecord::Reflection::ThroughReflection
-        edge_joins.unshift edge_association.options[:through]
-        edge_association = parent.class.reflect_on_association(edge_association.options[:through])
+      associations = []
+      association_name = node.class.name.pluralize.downcase.to_sym
+      association = parent.class.reflect_on_association(association_name)
+      while association.is_a?(ActiveRecord::Reflection::ThroughReflection)
+        associations.unshift(association.options[:through])
+        association = parent.class.reflect_on_association(association.options[:through])
       end
-      edge_joins
-      # join_chain = []
-      # starting_class = parent.class
-      # node_relationship_name = class_to_str(node.class)
-      # while starting_class
-      #   reflection = starting_class.reflect_on_association(node_relationship_name)
-      #   association_name = reflection&.options&.try(:[], :through)
-      #   join_chain << association_name if association_name
-      #   starting_class = str_to_class(association_name)
-      #   node_relationship_name = node_relationship_name.singularize
-      # end
-      # join_chain
+
+      @associations = associations
+    end
+
+    # List the key:value criteria for finding the edge record in the database
+    def where_hash_for_edge(root_key, nested_associations)
+      root_include = { root_key => [parent] }
+      terminal_include = { self.class.class_to_str(node.class) => node }
+      inner_includes = nested_associations.reverse.reduce(terminal_include) do |acc, rel_name|
+        { rel_name.to_s.pluralize => acc }
+      end
+      root_include.merge(inner_includes)
+    end
+
+    def root_association_key(edge_class)
+      key = self.class.class_to_str(parent.class)
+      unless edge_class.reflections.keys.include?(key)
+        key = edge_class.reflections.select { |_k, r| r.polymorphic? }.keys.first
+      end
+      key.to_sym
+    end
+
+    class << self
+      private
+
+      def str_to_class(str)
+        str.to_s.singularize.camelize.constantize
+      rescue # rubocop:disable Lint/HandleExceptions
+      end
+
+      def class_to_str(klass)
+        klass.name.downcase
+      end
     end
   end
 end

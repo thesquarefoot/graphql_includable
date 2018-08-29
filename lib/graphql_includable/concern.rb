@@ -5,11 +5,11 @@ module GraphQLIncludable
   # ActiveSupport::Concern to include onto GraphQL-mapped models
   module Concern
     extend ActiveSupport::Concern
-    # logger = Logger.new(STDOUT)
 
     module ClassMethods
       # Main entry point of the concern, to be called from top-level fields
       # Accepts a graphql-ruby query context, preloads, and returns itself
+      # @param ctx GraphQL::Query::Context
       def includes_from_graphql(ctx)
         node = GraphQLIncludable::Resolver.find_node_by_return_type(ctx.irep_node, name)
         generated_includes = GraphQLIncludable::Resolver.includes_for_node(node)
@@ -18,7 +18,7 @@ module GraphQLIncludable
         # As this feature is just for a performance gain, it should never
         # fail destructively, so catch and log all exceptions, but continue
         raise e if Rails && Rails.env.development?
-        logger.info(e, e.backtrace.join('\n'))
+        Rails.logger.debug("#{e.message}\n#{e.backtrace.join('\n')}")
         self
       end
 

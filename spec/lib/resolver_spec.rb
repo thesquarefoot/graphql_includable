@@ -1,5 +1,3 @@
-require 'byebug'
-
 def get_selection(query)
   GraphQL.parse(query).definitions[0].selections[0]
 end
@@ -100,7 +98,6 @@ describe GraphQLIncludable::Resolver do
     let(:irep_selection) { irep_selection_from_query(schema, 'query { test { with_includes } }') }
 
     it 'uses the :includes definition' do
-      # byebug
       expect(GraphQLIncludable::Resolver.node_includes_source_from_metadata(irep_selection)).to eq(:foo)
     end
     it 'uses the :property definition' do

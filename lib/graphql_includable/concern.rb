@@ -13,7 +13,7 @@ module GraphQLIncludable
       def includes_from_graphql(ctx)
         node = GraphQLIncludable::Resolver.find_node_by_return_type(ctx.irep_node, name)
         generated_includes = GraphQLIncludable::Resolver.includes_for_node(node)
-        includes(generated_includes)
+        preload(generated_includes)
       rescue => e
         # As this feature is just for a performance gain, it should never
         # fail destructively, so catch and log all exceptions, but continue

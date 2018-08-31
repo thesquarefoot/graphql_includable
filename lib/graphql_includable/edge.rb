@@ -21,10 +21,6 @@ module GraphQLIncludable
         selector = selector.merge(edge_class.includes(*nested_association_names))
       end
 
-      if class_is_polymorphic?(edge_class)
-        selector = selector.merge(edge_class.joins(root_association_key))
-      end
-
       selector.find_by(
         where_hash_for_edge(root_association_key, nested_associations)
       )
@@ -40,10 +36,6 @@ module GraphQLIncludable
         child_association_name = node.class.name.downcase.to_sym
         rec.send(root_association_key) == parent && rec.send(child_association_name) == node
       end
-    end
-
-    def class_is_polymorphic?(klass)
-      klass.reflections.any? { |_k, r| r.polymorphic? }
     end
 
     # Delegate method calls on this Edge instance to the ActiveRecord instance

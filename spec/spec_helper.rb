@@ -16,19 +16,19 @@ shared_examples 'graphql' do
       name 'TestQuery'
       field :apple, AppleType do
         resolve ->(_obj, _args, ctx) do
-          private_includes = Apple.all.includes_from_graphql(ctx).includes_values
+          private_includes = Apple.all.includes_from_graphql(ctx).preload_values[0]
           nil
         end
       end
       field :tree, TreeType do
         resolve ->(_obj, _args, ctx) do
-          private_includes = Tree.all.includes_from_graphql(ctx).includes_values
+          private_includes = Tree.all.includes_from_graphql(ctx).preload_values[0]
           nil
         end
       end
       field :orchard, OrchardType do
         resolve ->(_obj, _args, ctx) do
-          private_includes = Tree.all.includes_from_graphql(ctx).includes_values
+          private_includes = Tree.all.includes_from_graphql(ctx).preload_values[0]
           nil
         end
       end

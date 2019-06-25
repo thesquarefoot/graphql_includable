@@ -53,6 +53,8 @@ module GraphQLIncludable
 
       if association
         child_includes = includes_for_node(node)
+        child_includes.delete(association.plural_name.singularize.to_sym) if association.options[:through]
+
         array_to_nested_hash(interceding_includes + [attribute_name, child_includes].reject(&:blank?))
         # if node_is_relay_connection?(node)
         #   join_name = association.options[:through]

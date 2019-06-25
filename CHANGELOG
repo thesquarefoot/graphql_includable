@@ -1,3 +1,6 @@
+0.2.12
+  - fix error querying connection through delegated field. branched from 0.2.8 (used in prod), last few pushed versions ignored
+
 0.2.8
   - fix associations over relay connections (still not working automatically, but won't blow up)
 

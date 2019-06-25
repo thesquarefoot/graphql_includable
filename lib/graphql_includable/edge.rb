@@ -11,7 +11,14 @@ module GraphQLIncludable
         is_polymorphic = true
         root_association_key = edge_class.reflections.select { |k, r| r.polymorphic? }.keys.first
       end
-      root_node = { root_association_key.to_sym => [parent] }
+
+      if parent.class.delegate_cache&.key?(edge_class_name)
+        root_association_search_value = parent.send(parent.class.delegate_cache[edge_class_name])
+      else
+        root_association_search_value = parent
+      end
+
+      root_node = { root_association_key.to_sym => [root_association_search_value] }
       terminal_node = { class_to_str(node.class) => node }
       join_chain.reverse.each do |rel_name|
         terminal_node = { rel_name.to_s.pluralize => terminal_node }
@@ -55,11 +62,16 @@ module GraphQLIncludable
       # node.parents
       # parent.nodes
       edge_association_name = node.class.name.pluralize.downcase.to_sym
-      edge_association = parent.class.reflect_on_association(edge_association_name)
+      if parent.class.delegate_cache&.key?(edge_association_name)
+        parent_class = str_to_class(parent.class.delegate_cache[edge_association_name])
+      else
+        parent_class = parent.class
+      end
+      edge_association = parent_class.reflect_on_association(edge_association_name)
       edge_joins = []
       while edge_association.is_a? ActiveRecord::Reflection::ThroughReflection
         edge_joins.unshift edge_association.options[:through]
-        edge_association = parent.class.reflect_on_association(edge_association.options[:through])
+        edge_association = parent_class.reflect_on_association(edge_association.options[:through])
       end
       edge_joins
       # join_chain = []

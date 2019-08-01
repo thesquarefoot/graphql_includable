@@ -1,7 +1,12 @@
-require 'active_support'
 require 'active_record'
+require 'active_support'
+require 'byebug'
 require 'graphql'
 require 'graphql_includable'
+
+ActiveRecord::Base.establish_connection adapter: "sqlite3", database: ":memory:"
+load File.dirname(__FILE__) + '/schema.rb'
+require File.dirname(__FILE__) + '/models.rb'
 
 # require 'test_models'
 # require 'test_schema'

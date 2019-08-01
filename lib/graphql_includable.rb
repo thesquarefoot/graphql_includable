@@ -16,5 +16,13 @@ module GraphQL
         &block
       )
     end
+
+    def define_connection_with_fetched_edge(**kwargs, &block)
+      GraphQLIncludable::Relay::EdgeWithNodeConnectionType.create_type(
+        self,
+        **kwargs,
+        &block
+      )
+    end
   end
 end

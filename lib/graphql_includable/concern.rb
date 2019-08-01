@@ -7,8 +7,9 @@ module GraphQLIncludable
     module ClassMethods
       def includes_from_graphql(ctx)
         node = Resolver.find_node_by_return_type(ctx.irep_node, name)
-        generated_includes = Resolver.includes_for_node(node)
-        includes(generated_includes)
+        manager = IncludesManager.new(nil)
+        Resolver.includes_for_node(node, manager)
+        includes(manager.includes)
       rescue => e
         Rails.logger.error(e)
         self

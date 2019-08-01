@@ -1,9 +1,3 @@
-GraphQL::Field.accepts_definitions(
-  edges_property: GraphQL::Define.assign_metadata_key(:edges_property),
-  nodes_property: GraphQL::Define.assign_metadata_key(:nodes_property),
-  edge_to_node_property: GraphQL::Define.assign_metadata_key(:edge_to_node_property)
-)
-
 module GraphQLIncludable
   module Relay
     class EdgeWithNode < GraphQL::Relay::Edge

@@ -7,7 +7,4 @@ Gem::Specification.new do |s|
   s.email = ['dan.rouse@squarefoot.com', 'jvickery@squarefoot.com', 'jordan@squarefoot.com']
   s.files = Dir['lib/**/*'].keep_if { |file| File.file?(file) }
   s.homepage = 'https://github.com/thesquarefoot/graphql_includable'
-
-  s.add_development_dependency 'activerecord', '~> 4.0.0'
-  s.add_development_dependency 'sqlite3'
 end

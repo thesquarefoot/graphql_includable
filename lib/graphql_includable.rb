@@ -2,6 +2,10 @@ require 'graphql'
 require 'graphql_includable/resolver'
 require 'graphql_includable/concern'
 require 'graphql_includable/edge'
+require 'graphql_includable/relay/edge_with_node'
+require 'graphql_includable/relay/edge_with_node_connection'
+require 'graphql_includable/relay/edge_with_node_connection_type'
+require 'graphql_includable/relay/instrumentation/connection'
 
 GraphQL::Field.accepts_definitions(
   includes: GraphQL::Define.assign_metadata_key(:includes),

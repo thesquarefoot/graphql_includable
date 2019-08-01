@@ -3,7 +3,7 @@ module GraphQLIncludable
     class EdgeWithNodeConnectionType
       def self.create_type(
         wrapped_type, edge_to_node_property:,
-        edge_type: wrapped_type.edge_type, edge_class: GraphQLIncludable::EdgeWithNode, nodes_field: GraphQL::Relay::ConnectionType.default_nodes_field, &block
+        edge_type: wrapped_type.edge_type, edge_class: EdgeWithNode, nodes_field: GraphQL::Relay::ConnectionType.default_nodes_field, &block
       )
         custom_edge_class = edge_class
 

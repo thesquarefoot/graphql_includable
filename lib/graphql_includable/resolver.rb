@@ -77,8 +77,6 @@ module GraphQLIncludable
     def self.includes_from_connection(node, parent_model, associations_from_parent_model, includes_manager)
       return unless node.return_type.fields['edges'].edge_class <= GraphQLIncludable::Relay::EdgeWithNode  # TODO: Possibly basic support for connections with only nodes
 
-      # Need to figure out if it works right for both edges and nodes directly. Even better if it doesn't load edges to get nodes
-
       edges_association = associations_from_parent_model[:edges]
       nodes_association = associations_from_parent_model[:nodes]
 

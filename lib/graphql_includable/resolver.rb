@@ -74,13 +74,16 @@ module GraphQLIncludable
       end
     end
 
-    def self.includes_from_connection(node, parent_model, association_from_parent_model, includes_manager)
+    def self.includes_from_connection(node, parent_model, associations_from_parent_model, includes_manager)
       return unless node.return_type.fields['edges'].edge_class <= GraphQLIncludable::Relay::EdgeWithNode  # TODO: Possibly basic support for connections with only nodes
 
       # Need to figure out if it works right for both edges and nodes directly. Even better if it doesn't load edges to get nodes
 
+      edges_association = associations_from_parent_model[:edges]
+      nodes_association = associations_from_parent_model[:nodes]
+
       edge_node_attribute = node.return_type.fields['edges'].metadata[:edge_to_node_property]
-      edge_model = association_from_parent_model.klass
+      edge_model = edges_association.klass
       edge_to_node_association = edge_model.reflect_on_association(edge_node_attribute)
       node_model = edge_to_node_association.klass
 
@@ -100,40 +103,40 @@ module GraphQLIncludable
         # }
 
         if connection_node.name == 'edges'
+          edges_includes_manager = includes_manager.add_child_include(edges_association)
+
           edge_children = connection_node.scoped_children[connection_node.return_type.unwrap]
           edge_children.each_value do |edge_child_node|
             if edge_child_node.name == 'node'
-              child_includes_manager = includes_manager.add_child_include(edge_to_node_association)
+              node_includes_manager = edges_includes_manager.add_child_include(edge_to_node_association)
 
               node_children = edge_child_node.scoped_children[edge_child_node.return_type.unwrap]
               node_children.each_value do |node_child_node|
-                includes_for_child(node_child_node, node_model, child_includes_manager)
+                includes_for_child(node_child_node, node_model, node_includes_manager)
               end
             else
-              includes_for_child(edge_child_node, edge_model, includes_manager)
+              includes_for_child(edge_child_node, edge_model, edges_includes_manager)
             end
           end
         elsif connection_node.name == 'nodes'
-          child_includes_manager = includes_manager.add_child_include(edge_to_node_association)
+          nodes_includes_manager = includes_manager.add_child_include(nodes_association)
           node_children = connection_node.scoped_children[connection_node.return_type.unwrap]
           node_children.each_value do |node_child_node|
-            includes_for_child(node_child_node, node_model, child_includes_manager)
+            includes_for_child(node_child_node, node_model, nodes_includes_manager)
           end
         end
       end
     end
 
     def self.includes_for_child(node, parent_model, includes_manager)
-      attribute_name = node_predicted_association_name(node)
-      delegated_through = includes_delegated_through(parent_model, attribute_name)
-      delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
-      association = (delegated_model || parent_model).reflect_on_association(attribute_name)
+      associations = possible_associations(node, parent_model)
 
-      if association
-        child_includes_manager = includes_manager.add_child_include(association)
+      if associations.present?
         if node_is_relay_connection?(node)
-          includes_from_connection(node, parent_model, association, child_includes_manager)
+          includes_from_connection(node, parent_model, associations, includes_manager)
         else
+          association = associations[:default] # should only be one
+          child_includes_manager = includes_manager.add_child_include(association)
           includes_for_node(node, child_includes_manager)
         end
       end
@@ -155,9 +158,34 @@ module GraphQLIncludable
     rescue NameError
     end
 
-    def self.node_predicted_association_name(node)
+    def self.node_is_relay_connection?(node)
+      node.return_type.unwrap.name =~ /Connection$/
+    end
+
+    def self.possible_associations(node, parent_model)
+      attribute_names = node_possible_association_names(node)
+      attribute_names.transform_values { |attribute_name| figure_out_association(attribute_name, parent_model) }.compact
+    end
+
+    def self.node_possible_association_names(node)
       definition = node.definitions.first
-      definition.metadata[:edges_property] || definition.metadata[:includes] || (definition.property || definition.name).to_sym
+
+      association_names = {}
+      if node_is_relay_connection?(node)
+        association_names[:edges] = definition.metadata[:edges_property] if definition.metadata.key?(:edges_property)
+        association_names[:nodes] = definition.metadata[:nodes_property] if definition.metadata.key?(:nodes_property)
+        return association_names if association_names.present? # This should be an includable connection with no :property or name fallback.
+      end
+
+      association_names[:default] = definition.metadata[:includes] || (definition.property || definition.name).to_sym
+      association_names
+    end
+
+    def self.figure_out_association(attribute_name, parent_model)
+      delegated_through = includes_delegated_through(parent_model, attribute_name)
+      delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
+      association = (delegated_model || parent_model).reflect_on_association(attribute_name)
+      association
     end
 
     # If method_name is delegated from base_model, return an array of
@@ -172,15 +200,6 @@ module GraphQLIncludable
         model_name = model.instance_variable_get(:@delegate_cache).try(:[], method)
       end
       chain
-    end
-
-    # Right-reduce an array into a nested hash
-    def self.array_to_nested_hash(arr)
-      arr.reverse.inject { |acc, item| { item => acc } } || {}
-    end
-
-    def self.node_is_relay_connection?(node)
-      node.return_type.unwrap.name =~ /Connection$/
     end
   end
 end

@@ -47,15 +47,14 @@ module GraphQLIncludable
       def determin_page_info_nodes
         # If the query asks for `pageInfo` before `edges` or `nodes`, we dont directly know which to use most efficently.
         # We can have a guess by checking if either of the associations are preloaded
-        byebug
         return @loaded_nodes if @loaded_nodes.present?
         return @loaded_edges if @loaded_edges.present?
 
-        edges_preloaded = @connection_edges_and_nodes.parent.association(@connection_edges_and_nodes.edges_property).loaded?
-        return fetch_edges if edges_preloaded
-
         nodes_preloaded = @connection_edges_and_nodes.parent.association(@connection_edges_and_nodes.nodes_property).loaded?
         return fetch_nodes if nodes_preloaded
+
+        edges_preloaded = @connection_edges_and_nodes.parent.association(@connection_edges_and_nodes.edges_property).loaded?
+        return fetch_edges if edges_preloaded
 
         fetch_nodes
       end

@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'graphql_includable'
-  s.version = '0.2.13'
+  s.version = '0.3.0'
   s.licenses = ['MIT']
   s.summary = 'An ActiveSupport::Concern for GraphQL Ruby to eager-load query data'
   s.authors = ['Dan Rouse', 'Josh Vickery', 'Jordan Hamill']

@@ -1,13 +1,12 @@
 module GraphQLIncludable
   module Relay
     class ConnectionEdgesAndNodes
-      attr_reader :parent, :edges_property, :nodes_property, :edge_to_node_property
+      attr_reader :parent, :edges_property, :nodes_property
 
-      def initialize(parent, edges_property, nodes_property, edge_to_node_property)
+      def initialize(parent, edges_property, nodes_property)
         @parent = parent
         @edges_property = edges_property
         @nodes_property = nodes_property
-        @edge_to_node_property = edge_to_node_property
       end
     end
 

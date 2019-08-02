@@ -15,11 +15,10 @@ module GraphQLIncludable
 
           edges_prop = field.metadata[:edges_property]
           nodes_prop = field.metadata[:nodes_property]
-          edge_to_node_prop = field.metadata[:edge_to_node_property]
 
           _original_resolve = field.resolve_proc
           new_resolve_proc = ->(obj, args, ctx) do
-            ConnectionEdgesAndNodes.new(obj, edges_prop, nodes_prop, edge_to_node_prop)
+            ConnectionEdgesAndNodes.new(obj, edges_prop, nodes_prop)
           end
 
           field.redefine { resolve(new_resolve_proc) }

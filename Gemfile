@@ -7,7 +7,6 @@ gem 'graphql'
 group :test do
   gem 'rspec'
   gem 'rubocop'
-  gem 'byebug'
 end
 
 group :development do

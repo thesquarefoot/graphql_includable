@@ -48,3 +48,50 @@ TreeType = GraphQL::ObjectType.define do
   field :fruitWithSeeds, types[AppleType], includes: { apples: :seeds }
 end
 ```
+
+### Connection Support
+
+Edges and node associations will be added to the `includes` pattern. Asking for only `nodes` will not include the edge association.
+
+```ruby
+class Survey < ApplicationRecord
+  has_many :survey_listings # edges
+  has_many :listings, through: :survey_listings # nodes through edges
+end
+
+SurveyType = GraphQL::ObjectType.define do
+  connection :listings, ListingType.define_connection_with_fetched_edge(edge_type: SurveyListingEdgeType) do
+    argument :liked, types.Boolean
+
+    # Define how to fetch nodes directly and indirectly through edges
+    includes(edges: :survey_listings, nodes: :listings)
+    edge_to_node_property(:listing)
+
+    # Optionally specify resolvers for nodes and edges
+    resolve_edges ->(survey, args, ctx) do
+      # survey.association(:survey_listings).loaded? == true
+      # survey.survey_listings.each { |survey_listing| survey_listing.association(:listing).loaded? == true }
+
+      return survey.liked_survey_listings if args[:liked]
+      survey.survey_listings
+    end
+
+    resolve_nodes ->(survey, args, ctx) do
+      # survey.association(:listings).loaded? == true
+
+      return survey.liked_listings if args[:liked]
+      survey.listings
+    end
+  end
+end
+
+GraphQLSchema = GraphQL::Schema.define do
+  query BaseQuery
+  mutation BaseMutation
+
+  # Add this instrumentation
+  instrument(:field, GraphQLIncludable::Relay::Instrumentation::Connection.new)
+end
+
+
+```

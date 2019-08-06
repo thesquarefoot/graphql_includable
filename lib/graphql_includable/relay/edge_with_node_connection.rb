@@ -50,6 +50,11 @@ module GraphQLIncludable
         edge.public_send(@connection_edges_and_nodes.edge_to_node_property)
       end
 
+      def total_count
+        @nodes = determin_page_info_nodes
+        @nodes.size
+      end
+
       private
 
       def args

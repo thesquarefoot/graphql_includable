@@ -88,6 +88,7 @@ module GraphQLIncludable
       connection_children = node.scoped_children[node.return_type.unwrap]
       connection_children.each_value do |connection_node|
         # connection_field {
+        #   totalCount
         #   pageInfo {...}
         #   nodes {
         #     node_model_field ...
@@ -122,6 +123,8 @@ module GraphQLIncludable
           node_children.each_value do |node_child_node|
             includes_for_child(node_child_node, node_model, nodes_includes_manager)
           end
+        elsif connection_node.name == 'totalCount'
+          # Handled using `.size` - if includes() grabbed edges/nodes it will .length else, a COUNT query saving memory.
         end
       end
     end

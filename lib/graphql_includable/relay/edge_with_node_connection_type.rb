@@ -11,6 +11,8 @@ module GraphQLIncludable
           name("#{wrapped_type.name}Connection")
           description("The connection type for #{wrapped_type.name}.")
 
+          field :totalCount, types.Int, "Total count.", property: :total_count
+
           field :edges, types[edge_type], "A list of edges.", edge_class: custom_edge_class, property: :fetch_edges, _includable_connection_marker: true
 
           if nodes_field

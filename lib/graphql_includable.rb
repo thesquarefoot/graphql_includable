@@ -9,9 +9,11 @@ require 'graphql_includable/relay/instrumentation/connection'
 
 GraphQL::Field.accepts_definitions(
   includes: GraphQL::Define.assign_metadata_key(:includes),
-  edges_property: GraphQL::Define.assign_metadata_key(:edges_property),
-  nodes_property: GraphQL::Define.assign_metadata_key(:nodes_property),
-  edge_to_node_property: GraphQL::Define.assign_metadata_key(:edge_to_node_property)
+  edge_to_node_property: GraphQL::Define.assign_metadata_key(:edge_to_node_property),
+  resolve_edges: GraphQL::Define.assign_metadata_key(:resolve_edges),
+  resolve_nodes: GraphQL::Define.assign_metadata_key(:resolve_nodes),
+  # Internal use
+  _includable_connection_marker: GraphQL::Define.assign_metadata_key(:_includable_connection_marker),
 )
 
 module GraphQL

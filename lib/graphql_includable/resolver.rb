@@ -80,7 +80,7 @@ module GraphQLIncludable
       edges_association = associations_from_parent_model[:edges]
       nodes_association = associations_from_parent_model[:nodes]
 
-      edge_node_attribute = node.return_type.fields['edges'].metadata[:edge_to_node_property]
+      edge_node_attribute = node.definition.metadata[:edge_to_node_property]
       edge_model = edges_association.klass
       edge_to_node_association = edge_model.reflect_on_association(edge_node_attribute)
       node_model = edge_to_node_association.klass
@@ -167,15 +167,16 @@ module GraphQLIncludable
 
     def self.node_possible_association_names(node)
       definition = node.definitions.first
+      user_includes = definition.metadata[:includes]
 
       association_names = {}
       if node_is_relay_connection?(node)
-        association_names[:edges] = definition.metadata[:edges_property] if definition.metadata.key?(:edges_property)
-        association_names[:nodes] = definition.metadata[:nodes_property] if definition.metadata.key?(:nodes_property)
-        return association_names if association_names.present? # This should be an includable connection with no :property or name fallback.
+        association_names[:edges] = user_includes[:edges] if user_includes.key?(:edges)
+        association_names[:nodes] = user_includes[:nodes] if user_includes.key?(:nodes)
+        return association_names if association_names.present? # This will have resolve procs for nodes and edges
       end
 
-      association_names[:default] = definition.metadata[:includes] || (definition.property || definition.name).to_sym
+      association_names[:default] = user_includes || (definition.property || definition.name).to_sym
       association_names
     end
 

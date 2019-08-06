@@ -1,12 +1,17 @@
 module GraphQLIncludable
   module Relay
     class ConnectionEdgesAndNodes
-      attr_reader :parent, :edges_property, :nodes_property
+      attr_reader :parent, :args, :ctx, :edges_property, :nodes_property, :edge_to_node_property, :edges_resolver, :nodes_resolver
 
-      def initialize(parent, edges_property, nodes_property)
+      def initialize(parent, args, ctx, edges_property, nodes_property, edge_to_node_property, edges_resolver, nodes_resolver)
         @parent = parent
+        @args = args
+        @ctx = ctx
         @edges_property = edges_property
         @nodes_property = nodes_property
+        @edge_to_node_property = edge_to_node_property
+        @edges_resolver = edges_resolver
+        @nodes_resolver = nodes_resolver
       end
     end
 
@@ -23,14 +28,14 @@ module GraphQLIncludable
       end
 
       def fetch_edges
-        @loaded_edges ||= @connection_edges_and_nodes.parent.public_send(@connection_edges_and_nodes.edges_property)
+        @loaded_edges ||= @connection_edges_and_nodes.edges_resolver.call(@connection_edges_and_nodes.parent, args, ctx)
         # Set nodes to make underlying BaseConnection work
         @nodes = @loaded_edges
         @loaded_edges
       end
 
       def fetch_nodes
-        @loaded_nodes ||= @connection_edges_and_nodes.parent.public_send(@connection_edges_and_nodes.nodes_property)
+        @loaded_nodes ||= @connection_edges_and_nodes.nodes_resolver.call(@connection_edges_and_nodes.parent, args, ctx)
         # Set nodes to make underlying BaseConnection work
         @nodes = @loaded_nodes
         @loaded_nodes
@@ -41,7 +46,19 @@ module GraphQLIncludable
         super
       end
 
+      def edge_to_node(edge)
+        edge.public_send(@connection_edges_and_nodes.edge_to_node_property)
+      end
+
       private
+
+      def args
+        @connection_edges_and_nodes.args
+      end
+
+      def ctx
+        @connection_edges_and_nodes.ctx
+      end
 
       def determin_page_info_nodes
         # If the query asks for `pageInfo` before `edges` or `nodes`, we dont directly know which to use most efficently.

@@ -11,19 +11,28 @@ Style/Lambda:
 Style/FrozenStringLiteralComment:
   Enabled: false
 
+Metrics/LineLength:
+  Max: 120
+
 Metrics/AbcSize:
-  Max: 20
+  Max: 25
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
 
 Metrics/MethodLength:
-  Max: 15
+  Max: 25
 
 Metrics/BlockLength:
   Max: 30
   ExcludedMethods:
     - describe
 
-Metrics/LineLength:
-  Max: 100
+Metrics/ClassLength:
+  Max: 120
 
 Metrics/ModuleLength:
   Max: 150

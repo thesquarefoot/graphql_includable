@@ -3,8 +3,7 @@ module GraphQLIncludable
     class EdgeWithNode < GraphQL::Relay::Edge
       def initialize(node, connection)
         @edge = node
-        edge_to_node_property = connection.field.type.fields['edges'].metadata[:edge_to_node_property]
-        node = @edge.public_send(edge_to_node_property)
+        node = connection.edge_to_node(@edge) # TODO: Make lazy
         super(node, connection)
       end
 
@@ -16,7 +15,7 @@ module GraphQLIncludable
         end
       end
 
-      def respond_to_missing(method_name, include_private = false)
+      def respond_to_missing?(method_name, include_private = false)
         @edge.respond_to?(method_name) || super
       end
     end

@@ -32,7 +32,6 @@ describe GraphQLIncludable::Edge do
   context 'connecting a HasManyThroughAssociation' do
     describe 'a method called by the EdgeType' do
       it 'is resolved through the ActiveRecord join model' do
-
       end
     end
   end

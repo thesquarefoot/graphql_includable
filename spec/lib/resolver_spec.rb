@@ -34,7 +34,6 @@ describe GraphQLIncludable::Resolver do
 
   describe 'result formatting' do
     it 'places single terminal node as a symbol' do
-
     end
     it 'places multiple terminal nodes as an array of symbols' do
     end
@@ -125,8 +124,7 @@ describe GraphQLIncludable::Resolver do
       class TestModel < ActiveRecord::Base
         include GraphQLIncludable::Concern
         delegate :delegated_method, to: :other_model
-        def normal_method
-        end
+        def normal_method; end
       end
     end
 
@@ -137,17 +135,9 @@ describe GraphQLIncludable::Resolver do
     end
     context 'when the method is delegated' do
       it 'returns an array of delegated models' do
-        expect(GraphQLIncludable::Resolver.includes_delegated_through(TestModel, :delegated_method)).to eq([:other_model])
+        expected = [:other_model]
+        expect(GraphQLIncludable::Resolver.includes_delegated_through(TestModel, :delegated_method)).to eq(expected)
       end
-    end
-  end
-
-  describe '.array_to_nested_hash' do
-    it 'reduces an array to a hash' do
-      expect(GraphQLIncludable::Resolver.array_to_nested_hash([1,2,3])).to eq({ 1 => { 2 => 3 } })
-    end
-    it 'converts an empty array to an empty hash' do
-      expect(GraphQLIncludable::Resolver.array_to_nested_hash([])).to eq({})
     end
   end
 end

@@ -35,7 +35,7 @@ module GraphQLIncludable
 
       if child_includes_arr.present?
         child_includes_arr << child_includes if child_includes.present?
-        child_includes =  child_includes_arr
+        child_includes = child_includes_arr
       end
 
       return child_includes if @parent_attribute.nil?
@@ -48,16 +48,16 @@ module GraphQLIncludable
     def self.find_node_by_return_type(node, desired_return_type)
       return_type = node.return_type.unwrap.to_s
       return node if return_type == desired_return_type
-      if node.respond_to?(:scoped_children)
-        matching_node = nil
-        node.scoped_children.values.each do |selections|
-          matching_node = selections.values.find do |child_node|
-            find_node_by_return_type(child_node, desired_return_type)
-          end
-          break if matching_node
+      return nil unless node.respond_to?(:scoped_children)
+
+      matching_node = nil
+      node.scoped_children.values.each do |selections|
+        matching_node = selections.values.find do |child_node|
+          find_node_by_return_type(child_node, desired_return_type)
         end
-        matching_node
+        break if matching_node
       end
+      matching_node
     end
 
     # Translate a node's selections into `includes` values
@@ -74,13 +74,16 @@ module GraphQLIncludable
       end
     end
 
-    def self.includes_from_connection(node, parent_model, associations_from_parent_model, includes_manager)
-      return unless node.return_type.fields['edges'].edge_class <= GraphQLIncludable::Relay::EdgeWithNode  # TODO: Possibly basic support for connections with only nodes
+    # rubocop:disable Metrics/AbcSize
+    # rubocop:disable Metrics/MethodLength
+    def self.includes_from_connection(node, _parent_model, associations_from_parent_model, includes_manager)
+      # TODO: Possibly basic support for connections with only nodes
+      return unless node.return_type.fields['edges'].edge_class <= GraphQLIncludable::Relay::EdgeWithNode
 
       edges_association = associations_from_parent_model[:edges]
       nodes_association = associations_from_parent_model[:nodes]
 
-      edge_node_attribute = node.return_type.fields['edges'].metadata[:edge_to_node_property]
+      edge_node_attribute = node.definition.metadata[:edge_to_node_property]
       edge_model = edges_association.klass
       edge_to_node_association = edge_model.reflect_on_association(edge_node_attribute)
       node_model = edge_to_node_association.klass
@@ -88,6 +91,7 @@ module GraphQLIncludable
       connection_children = node.scoped_children[node.return_type.unwrap]
       connection_children.each_value do |connection_node|
         # connection_field {
+        #   totalCount
         #   pageInfo {...}
         #   nodes {
         #     node_model_field ...
@@ -122,24 +126,28 @@ module GraphQLIncludable
           node_children.each_value do |node_child_node|
             includes_for_child(node_child_node, node_model, nodes_includes_manager)
           end
+        elsif connection_node.name == 'totalCount'
+          # Handled using `.size` - if includes() grabbed edges/nodes it will .length else, a COUNT query saving memory.
         end
       end
     end
+    # rubocop:enable Metrics/MethodLength
+    # rubocop:enable Metrics/AbcSize
 
     def self.includes_for_child(node, parent_model, includes_manager)
       associations = possible_associations(node, parent_model)
+      return unless associations.present?
 
-      if associations.present?
-        if node_is_relay_connection?(node)
-          includes_from_connection(node, parent_model, associations, includes_manager)
-        else
-          association = associations[:default] # should only be one
-          child_includes_manager = includes_manager.add_child_include(association)
-          includes_for_node(node, child_includes_manager)
-        end
+      if node_is_relay_connection?(node)
+        includes_from_connection(node, parent_model, associations, includes_manager)
+      else
+        association = associations[:default] # should only be one
+        child_includes_manager = includes_manager.add_child_include(association)
+        includes_for_node(node, child_includes_manager)
       end
     end
 
+    # rubocop:disable Lint/HandleExceptions
     def self.model_name_to_class(model_name)
       begin
         model_name.to_s.camelize.constantize
@@ -155,6 +163,7 @@ module GraphQLIncludable
       model if model < ActiveRecord::Base
     rescue NameError
     end
+    # rubocop:enable Lint/HandleExceptions
 
     def self.node_is_relay_connection?(node)
       node.return_type.unwrap.name =~ /Connection$/
@@ -167,15 +176,16 @@ module GraphQLIncludable
 
     def self.node_possible_association_names(node)
       definition = node.definitions.first
+      user_includes = definition.metadata[:includes]
 
       association_names = {}
       if node_is_relay_connection?(node)
-        association_names[:edges] = definition.metadata[:edges_property] if definition.metadata.key?(:edges_property)
-        association_names[:nodes] = definition.metadata[:nodes_property] if definition.metadata.key?(:nodes_property)
-        return association_names if association_names.present? # This should be an includable connection with no :property or name fallback.
+        association_names[:edges] = user_includes[:edges] if user_includes.key?(:edges)
+        association_names[:nodes] = user_includes[:nodes] if user_includes.key?(:nodes)
+        return association_names if association_names.present? # This will have resolve procs for nodes and edges
       end
 
-      association_names[:default] = definition.metadata[:includes] || (definition.property || definition.name).to_sym
+      association_names[:default] = user_includes || (definition.property || definition.name).to_sym
       association_names
     end
 

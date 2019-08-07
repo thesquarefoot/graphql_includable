@@ -9,7 +9,6 @@ module GraphQLIncludable
         node = Resolver.find_node_by_return_type(ctx.irep_node, name)
         manager = IncludesManager.new(nil)
         Resolver.includes_for_node(node, manager)
-        puts "INCLUDES!!! #{manager.includes}"
         includes(manager.includes)
       rescue => e
         Rails.logger.error(e)

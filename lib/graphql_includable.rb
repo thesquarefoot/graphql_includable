@@ -13,13 +13,13 @@ GraphQL::Field.accepts_definitions(
   resolve_edges: GraphQL::Define.assign_metadata_key(:resolve_edges),
   resolve_nodes: GraphQL::Define.assign_metadata_key(:resolve_nodes),
   # Internal use
-  _includable_connection_marker: GraphQL::Define.assign_metadata_key(:_includable_connection_marker),
+  _includable_connection_marker: GraphQL::Define.assign_metadata_key(:_includable_connection_marker)
 )
 
 module GraphQL
   class BaseType
     def define_includable_connection(**kwargs, &block)
-      warn '[DEPRECATION] `define_includable_connection` is deprecated.  Please use `define_connection_with_fetched_edge` instead.'
+      warn '[DEPRECATION] `define_includable_connection` is deprecated. Use `define_connection_with_fetched_edge`.'
       define_connection(
         edge_class: GraphQLIncludable::Edge,
         **kwargs,

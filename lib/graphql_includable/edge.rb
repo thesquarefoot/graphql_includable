@@ -1,3 +1,6 @@
+# rubocop:disable Style/ConditionalAssignment
+# rubocop:disable Lint/HandleExceptions
+# rubocop:disable Metrics/AbcSize
 module GraphQLIncludable
   class Edge < GraphQL::Relay::Edge
     def edge
@@ -9,7 +12,7 @@ module GraphQLIncludable
       root_association_key = class_to_str(parent.class)
       unless edge_class.reflections.keys.include?(root_association_key)
         is_polymorphic = true
-        root_association_key = edge_class.reflections.select { |k, r| r.polymorphic? }.keys.first
+        root_association_key = edge_class.reflections.select { |_k, r| r.polymorphic? }.keys.first
       end
 
       if parent.class.delegate_cache&.key?(edge_class_name)
@@ -39,7 +42,7 @@ module GraphQLIncludable
       end
     end
 
-    def respond_to_missing(method_name, include_private = false)
+    def respond_to_missing?(method_name, include_private = false)
       edge.respond_to?(method_name) || super
     end
 

@@ -6,10 +6,17 @@ module GraphQLIncludable
 
     module ClassMethods
       def includes_from_graphql(ctx)
-        node = Resolver.find_node_by_return_type(ctx.irep_node, name)
-        manager = IncludesManager.new(nil)
-        Resolver.includes_for_node(node, manager)
-        includes(manager.includes)
+        ActiveSupport::Notifications.instrument('graphql_includable.includes_from_graphql') do |instrument|
+          instrument[:operation_name] = ctx.query&.operation_name
+
+          node = Resolver.find_node_by_return_type(ctx.irep_node, name)
+          manager = IncludesManager.new(nil)
+          Resolver.includes_for_node(node, manager)
+
+          generated_includes = manager.includes
+          instrument[:includes] = generated_includes
+          includes(generated_includes)
+        end
       rescue => e
         Rails.logger.error(e)
         self

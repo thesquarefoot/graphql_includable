@@ -3,7 +3,10 @@
   - (breaking change) removed `edges_property` and `nodes_property`. Replaced with `includes: {edges: :prop1, nodes: :prop2}`.
   - added `resolve_edges` and `resolve_nodes` for fetched connections.
   - added a totalCount field to fetched edge connections.
-  -
+
+0.3.1
+  - active support instrumentation.
+
 0.3.0
   - improve relay connection support - Deprecated define_includable_connection in favour of define_connection_with_fetched_edge.
 

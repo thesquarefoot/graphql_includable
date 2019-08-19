@@ -6,6 +6,7 @@ require 'graphql_includable/relay/edge_with_node'
 require 'graphql_includable/relay/edge_with_node_connection'
 require 'graphql_includable/relay/edge_with_node_connection_type'
 require 'graphql_includable/relay/instrumentation/connection'
+require 'graphql_includable/new/gql_includable'
 
 GraphQL::Field.accepts_definitions(
   includes: GraphQL::Define.assign_metadata_key(:includes),

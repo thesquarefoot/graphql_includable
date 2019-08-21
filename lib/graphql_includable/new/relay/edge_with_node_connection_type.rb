@@ -20,7 +20,7 @@ module GraphQLIncludable
             field :edges, types[edge_type], 'A list of edges.' do
               edge_class custom_edge_class
               property :fetch_edges
-              _includable_connection_marker true
+              _new_includable_connection_marker true
             end
 
             if nodes_field

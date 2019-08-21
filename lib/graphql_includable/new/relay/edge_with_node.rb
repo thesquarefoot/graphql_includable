@@ -13,7 +13,7 @@ GraphQL::Field.accepts_definitions(
 
   ##
   # Internally used to mark a connection type that has a fetched edge
-  _includable_connection_marker: GraphQL::Define.assign_metadata_key(:_includable_connection_marker)
+  _new_includable_connection_marker: GraphQL::Define.assign_metadata_key(:_new_includable_connection_marker)
 )
 
 module GraphQLIncludable

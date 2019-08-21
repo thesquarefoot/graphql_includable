@@ -41,7 +41,7 @@ module GraphQLIncludable
         private
 
         def edge_with_node_connection?(field)
-          field.connection? && field.type.fields['edges'].metadata.key?(:_includable_connection_marker)
+          field.connection? && field.type.fields['edges'].metadata.key?(:_new_includable_connection_marker)
         end
 
         def proc_based?(field)

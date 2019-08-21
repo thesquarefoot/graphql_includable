@@ -1,7 +1,7 @@
 GraphQL::Field.accepts_definitions(
   ##
   # Define Active Record includes for a field
-  includes: GraphQL::Define.assign_metadata_key(:includes),
+  new_includes: GraphQL::Define.assign_metadata_key(:new_includes),
 )
 
 module GraphQLIncludable
@@ -136,7 +136,7 @@ module GraphQLIncludable
       end
 
       def build_includes(node)
-        includes_meta = node.definition.metadata[:includes]
+        includes_meta = node.definition.metadata[:new_includes]
         return nil if includes_meta.blank?
 
         builder = GraphQLIncludable::New::IncludesBuilder.new()
@@ -156,7 +156,7 @@ module GraphQLIncludable
       end
 
       def build_connection_includes(node)
-        includes_meta = node.definition.metadata[:includes]
+        includes_meta = node.definition.metadata[:new_includes]
         return nil if includes_meta.blank?
 
         builder = GraphQLIncludable::New::ConnectionIncludesBuilder.new()

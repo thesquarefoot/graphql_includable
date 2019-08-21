@@ -1,4 +1,7 @@
 describe GraphQLIncludable::New::Resolver do
+  before(:each) { DatabaseCleaner.start }
+  after(:each) { DatabaseCleaner.clean }
+
   let!(:user_1) { User.create!(name: 'Jordan', email: 'jordan@example.com') }
   let!(:location_1) { Location.create!(name: 'Office A') }
   let!(:location_2) { Location.create!(name: 'Office B') }
@@ -14,7 +17,7 @@ describe GraphQLIncludable::New::Resolver do
   context 'with a basic schema query' do
     let(:query_string) do
       <<-GQL
-      query {
+      query BasicQuery {
         users {
           name
           email
@@ -42,7 +45,7 @@ describe GraphQLIncludable::New::Resolver do
       GQL
     end
 
-    it 'works' do
+    it 'returns the correct result' do
       result = GraphQLSchema.execute(
         query_string,
         variables: {},
@@ -99,6 +102,15 @@ describe GraphQLIncludable::New::Resolver do
         }
       })
     end
+
+    it 'generates the correct includes pattern' do
+      expect do
+        GraphQLSchema.execute(query_string, variables: {}, context: {})
+      end.to instrument('graphql_includable.includes').with(
+        operation_name: 'BasicQuery',
+        includes: [:user, { client_tasks: [:task] }]
+      )
+    end
   end
 
   context 'detecting under/overfetching and N+1 queries' do
@@ -127,7 +139,16 @@ describe GraphQLIncludable::New::Resolver do
         GQL
       end
 
-      it 'includes the right amount' do
+      it 'generates the correct includes pattern' do
+        expect do
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+        end.to instrument('graphql_includable.includes').with(
+          operation_name: nil,
+          includes: [:user, { client_tasks: { task: [:location] } }]
+        )
+      end
+
+      it 'does not over/under include' do
         Bullet.start_request
         result = GraphQLSchema.execute(
           query_string,
@@ -158,7 +179,16 @@ describe GraphQLIncludable::New::Resolver do
         GQL
       end
 
-      it 'includes the right amount' do
+      it 'generates the correct includes pattern' do
+        expect do
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+        end.to instrument('graphql_includable.includes').with(
+          operation_name: nil,
+          includes: { tasks: [:location] }
+        )
+      end
+
+      it 'does not over/under include' do
         Bullet.start_request
         result = GraphQLSchema.execute(
           query_string,
@@ -186,7 +216,16 @@ describe GraphQLIncludable::New::Resolver do
         GQL
       end
 
-      it 'includes the right amount' do
+      it 'generates the correct includes pattern' do
+        expect do
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+        end.to instrument('graphql_includable.includes').with(
+          operation_name: nil,
+          includes: [:client_tasks]
+        )
+      end
+
+      it 'does not over/under include' do
         Bullet.start_request
         result = GraphQLSchema.execute(
           query_string,
@@ -220,7 +259,16 @@ describe GraphQLIncludable::New::Resolver do
         GQL
       end
 
-      it 'includes the right amount' do
+      it 'generates the correct includes pattern' do
+        expect do
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+        end.to instrument('graphql_includable.includes').with(
+          operation_name: nil,
+          includes: [:client_tasks, { tasks: [:location] }]
+        )
+      end
+
+      it 'does not over/under include' do
         Bullet.start_request
         result = GraphQLSchema.execute(
           query_string,
@@ -254,7 +302,16 @@ describe GraphQLIncludable::New::Resolver do
         GQL
       end
 
-      it 'includes the right amount' do
+      it 'generates the correct includes pattern' do
+        expect do
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+        end.to instrument('graphql_includable.includes').with(
+          operation_name: nil,
+          includes: [:client_tasks, { tasks: [:location] }]
+        )
+      end
+
+      it 'does not over/under include' do
         Bullet.start_request
         result = GraphQLSchema.execute(
           query_string,
@@ -283,7 +340,29 @@ describe GraphQLIncludable::New::Resolver do
           GQL
         end
 
-        it 'includes the right amount' do
+        it 'generates the correct includes pattern' do
+          received_events = []
+          subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
+            event = ActiveSupport::Notifications::Event.new(*args)
+            received_events << event
+          end
+
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+          ActiveSupport::Notifications.unsubscribe(subscription)
+
+          expect(received_events.length).to eq(4)
+          clients_call = received_events[0]
+          client_1_call = received_events[1]
+          client_2_call = received_events[2]
+          client_3_call = received_events[3]
+
+          expect(clients_call.payload[:includes]).to eq({})
+          expect(client_1_call.payload[:includes]).to eq({})
+          expect(client_2_call.payload[:includes]).to eq({})
+          expect(client_3_call.payload[:includes]).to eq({})
+        end
+
+        it 'does not over/under include' do
           Bullet.start_request
           result = GraphQLSchema.execute(
             query_string,
@@ -317,7 +396,29 @@ describe GraphQLIncludable::New::Resolver do
           GQL
         end
 
-        it 'includes the right amount' do
+        it 'generates the correct includes pattern' do
+          received_events = []
+          subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
+            event = ActiveSupport::Notifications::Event.new(*args)
+            received_events << event
+          end
+
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+          ActiveSupport::Notifications.unsubscribe(subscription)
+
+          expect(received_events.length).to eq(4)
+          clients_call = received_events[0]
+          client_1_call = received_events[1]
+          client_2_call = received_events[2]
+          client_3_call = received_events[3]
+
+          expect(clients_call.payload[:includes]).to eq({})
+          expect(client_1_call.payload[:includes]).to eq({ task: [:location] })
+          expect(client_2_call.payload[:includes]).to eq({ task: [:location] })
+          expect(client_3_call.payload[:includes]).to eq({ task: [:location] })
+        end
+
+        it 'does not over/under include' do
           Bullet.start_request
           result = GraphQLSchema.execute(
             query_string,
@@ -347,7 +448,29 @@ describe GraphQLIncludable::New::Resolver do
           GQL
         end
 
-        it 'includes the right amount' do
+        it 'generates the correct includes pattern' do
+          received_events = []
+          subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
+            event = ActiveSupport::Notifications::Event.new(*args)
+            received_events << event
+          end
+
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+          ActiveSupport::Notifications.unsubscribe(subscription)
+
+          expect(received_events.length).to eq(4)
+          clients_call = received_events[0]
+          client_1_call = received_events[1]
+          client_2_call = received_events[2]
+          client_3_call = received_events[3]
+
+          expect(clients_call.payload[:includes]).to eq({})
+          expect(client_1_call.payload[:includes]).to eq([:location])
+          expect(client_2_call.payload[:includes]).to eq([:location])
+          expect(client_3_call.payload[:includes]).to eq([:location])
+        end
+
+        it 'does not over/under include' do
           Bullet.start_request
           result = GraphQLSchema.execute(
             query_string,
@@ -380,7 +503,35 @@ describe GraphQLIncludable::New::Resolver do
           GQL
         end
 
-        it 'includes the right amount', :focus  do
+        it 'generates the correct includes pattern' do
+          received_events = []
+          subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
+            event = ActiveSupport::Notifications::Event.new(*args)
+            received_events << event
+          end
+
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+          ActiveSupport::Notifications.unsubscribe(subscription)
+
+          expect(received_events.length).to eq(7)
+          clients_call = received_events[0]
+          client_nodes_1_call = received_events[1]
+          client_edges_1_call = received_events[2]
+          client_nodes_2_call = received_events[3]
+          client_edges_2_call = received_events[4]
+          client_nodes_3_call = received_events[5]
+          client_edges_3_call = received_events[6]
+
+          expect(clients_call.payload[:includes]).to eq({})
+          expect(client_nodes_1_call.payload[:includes]).to eq([:location])
+          expect(client_nodes_2_call.payload[:includes]).to eq([:location])
+          expect(client_nodes_3_call.payload[:includes]).to eq([:location])
+          expect(client_edges_1_call.payload[:includes]).to eq({})
+          expect(client_edges_2_call.payload[:includes]).to eq({})
+          expect(client_edges_3_call.payload[:includes]).to eq({})
+        end
+
+        it 'does not over/under include'  do
           Bullet.start_request
           result = GraphQLSchema.execute(
             query_string,
@@ -397,10 +548,10 @@ describe GraphQLIncludable::New::Resolver do
           <<-GQL
           query {
             clients {
-              edges {
-                completed
-              }
               nested_query {
+                edges {
+                  completed
+                }
                 nodes {
                   name
                   location {
@@ -413,7 +564,35 @@ describe GraphQLIncludable::New::Resolver do
           GQL
         end
 
-        it 'includes the right amount', :focus  do
+        it 'generates the correct includes pattern' do
+          received_events = []
+          subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
+            event = ActiveSupport::Notifications::Event.new(*args)
+            received_events << event
+          end
+
+          GraphQLSchema.execute(query_string, variables: {}, context: {})
+          ActiveSupport::Notifications.unsubscribe(subscription)
+
+          expect(received_events.length).to eq(7)
+          clients_call = received_events[0]
+          client_nodes_1_call = received_events[2]
+          client_edges_1_call = received_events[1]
+          client_nodes_2_call = received_events[4]
+          client_edges_2_call = received_events[3]
+          client_nodes_3_call = received_events[6]
+          client_edges_3_call = received_events[5]
+
+          expect(clients_call.payload[:includes]).to eq({})
+          expect(client_nodes_1_call.payload[:includes]).to eq([:location])
+          expect(client_nodes_2_call.payload[:includes]).to eq([:location])
+          expect(client_nodes_3_call.payload[:includes]).to eq([:location])
+          expect(client_edges_1_call.payload[:includes]).to eq({})
+          expect(client_edges_2_call.payload[:includes]).to eq({})
+          expect(client_edges_3_call.payload[:includes]).to eq({})
+        end
+
+        it 'does not over/under include'  do
           Bullet.start_request
           result = GraphQLSchema.execute(
             query_string,

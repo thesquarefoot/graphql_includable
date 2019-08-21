@@ -57,7 +57,6 @@ module GraphQLIncludable
         builder.instance_eval(&block)
         builder.nodes_builder.includes
         builder.edges_builder.includes
-        byebug
       end
 
       def path(*symbols, &block)

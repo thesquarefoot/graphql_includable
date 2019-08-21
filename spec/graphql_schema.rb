@@ -45,8 +45,10 @@ ClientType = GraphQL::ObjectType.define do
 
     new_includes ->() do
       nodes(:tasks)
-      edges(:client_tasks)
-      edge_node(:task)
+      edges do
+        path(:client_tasks)
+        node(:task)
+      end
     end
   end
 
@@ -55,8 +57,10 @@ ClientType = GraphQL::ObjectType.define do
 
     new_includes ->() do
       nodes(:tasks)
-      edges(:client_tasks)
-      edge_node(:task)
+      edges do
+        path(:client_tasks)
+        node(:task)
+      end
     end
 
     resolve_edges ->(client, args, ctx) do
@@ -71,7 +75,9 @@ ClientType = GraphQL::ObjectType.define do
   connection :nested_query, TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) { name 'NestedQueryConnection' } do
     connection_properties(edge_to_node: :task)
 
-    new_includes ->() { edge_node(:task) }
+    new_includes ->() do
+      edges { node(:task) }
+    end
 
     resolve_edges ->(client, args, ctx) do
       ClientTask.includes(GraphQLIncludable::New.includes(ctx)).all

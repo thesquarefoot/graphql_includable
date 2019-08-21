@@ -60,14 +60,14 @@ module GraphQLIncludable
           # }
 
           if connection_node.name == 'edges'
-            edges_includes_builder = builder.edges_builder
+            edges_includes_builder = builder.edges_builder.builder
             includes.merge_includes(edges_includes_builder.includes)
             edges_includes = edges_includes_builder.path_leaf_includes
 
             edge_children = connection_node.scoped_children[connection_node.return_type.unwrap]
             edge_children.each_value do |edge_child_node|
               if edge_child_node.name == 'node'
-                node_includes_builder = builder.edge_node_builder
+                node_includes_builder = builder.edges_builder.node_builder
                 edges_includes.merge_includes(node_includes_builder.includes)
                 edge_node_includes = node_includes_builder.path_leaf_includes
 
@@ -99,7 +99,7 @@ module GraphQLIncludable
       # includes, only edge_to_node includes
       def includes_for_top_level_connection(node, includes)
         builder = build_connection_includes(node)
-        return unless builder&.edge_node_builder&.includes?
+        return unless builder&.edges_builder.node_builder&.includes?
 
         connection_children = node.scoped_children[node.return_type.unwrap]
         top_level_being_resolved = @root_ctx.namespace(:gql_includable)[:resolving]
@@ -111,7 +111,7 @@ module GraphQLIncludable
           edge_children = edges_node.scoped_children[edges_node.return_type.unwrap]
           edge_children.each_value do |edge_child_node|
             if edge_child_node.name == 'node'
-              node_includes_builder = builder.edge_node_builder
+              node_includes_builder = builder.edges_builder.node_builder
               edges_includes.merge_includes(node_includes_builder.includes)
               edge_node_includes = node_includes_builder.path_leaf_includes
 

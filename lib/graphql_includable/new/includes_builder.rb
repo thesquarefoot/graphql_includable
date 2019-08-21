@@ -1,31 +1,5 @@
 module GraphQLIncludable
   module New
-    class ConnectionIncludesBuilder
-      attr_reader :nodes_builder, :edges_builder, :edge_node_builder
-
-      def initialize()
-        @nodes_builder = IncludesBuilder.new()
-        @edges_builder = IncludesBuilder.new()
-        @edge_node_builder = IncludesBuilder.new()
-      end
-
-      def includes?
-        (@nodes_builder.includes?) || (@edges_builder.includes? && @edge_node_builder.includes?)
-      end
-
-      def nodes(*symbols, &block)
-        @nodes_builder.path(*symbols, &block)
-      end
-
-      def edges(*symbols, &block)
-        @edges_builder.path(*symbols, &block)
-      end
-
-      def edge_node(*symbols, &block)
-        @edge_node_builder.path(*symbols, &block)
-      end
-    end
-
     class IncludesBuilder
       attr_reader :included_path, :includes
 
@@ -36,7 +10,6 @@ module GraphQLIncludable
       end
 
       def includes?
-        # TODO
         @included_path.present?
       end
 
@@ -50,13 +23,6 @@ module GraphQLIncludable
           leaf_includes = leaf_includes[key]
         end
         leaf_includes
-      end
-
-      def connection(&block)
-        builder = ConnectionIncludesBuilder.new
-        builder.instance_eval(&block)
-        builder.nodes_builder.includes
-        builder.edges_builder.includes
       end
 
       def path(*symbols, &block)
@@ -98,6 +64,52 @@ module GraphQLIncludable
           symbols += nested.included_path
           includes.merge_includes(nested.includes)
         end
+      end
+    end
+
+    class ConnectionIncludesBuilder
+      attr_reader :nodes_builder, :edges_builder
+
+      def initialize()
+        @nodes_builder = IncludesBuilder.new()
+        @edges_builder = ConnectionEdgesIncludesBuilder.new()
+      end
+
+      def includes?
+        @nodes_builder.includes? || @edges_builder.includes?
+      end
+
+      def nodes(*symbols, &block)
+        @nodes_builder.path(*symbols, &block)
+      end
+
+      def edges(&block)
+        @edges_builder.instance_eval(&block)
+      end
+    end
+
+    class ConnectionEdgesIncludesBuilder
+      attr_reader :builder, :node_builder
+
+      def initialize()
+        @builder = IncludesBuilder.new()
+        @node_builder = IncludesBuilder.new()
+      end
+
+      def includes?
+        @builder.includes? && @node_builder.includes?
+      end
+
+      def path(*symbols, &block)
+        @builder.path(*symbols, &block)
+      end
+
+      def sibling_path(*symbols, &block)
+        @builder.sibling_path(*symbols, &block)
+      end
+
+      def node(*symbols, &block)
+        @node_builder.path(*symbols, &block)
       end
     end
   end

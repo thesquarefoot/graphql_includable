@@ -63,7 +63,7 @@ module GraphQLIncludable
         end
 
         def total_count
-          @nodes = determin_page_info_nodes
+          @nodes = determine_page_info_nodes
           @nodes.size
         end
 

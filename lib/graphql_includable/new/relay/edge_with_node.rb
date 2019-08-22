@@ -56,7 +56,8 @@ module GraphQLIncludable
           _value.respond_to?(method_name) || super
         end
 
-        private
+        # TODO: Hide value_class when old api is gone
+        # private
 
         def _value
           @resolved_value ||= @lazy_value.call

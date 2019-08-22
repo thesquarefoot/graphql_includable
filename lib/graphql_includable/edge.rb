@@ -5,18 +5,27 @@ module GraphQLIncludable
   class Edge < GraphQL::Relay::Edge
     def edge
       return @edge if @edge
+
       join_chain = joins_along_edge
       edge_class_name = join_chain.shift
       edge_class = str_to_class(edge_class_name)
 
-      root_association_key = class_to_str(parent.class)
+      parent = if self.parent.instance_of?(GraphQLIncludable::New::Relay::LazyEvaluatedNode)
+        parent_class = self.parent._value.class
+        self.parent._value
+      else
+        parent_class = self.parent.class
+        self.parent
+      end
+
+      root_association_key = class_to_str(parent_class)
       unless edge_class.reflections.keys.include?(root_association_key)
         is_polymorphic = true
         root_association_key = edge_class.reflections.select { |_k, r| r.polymorphic? }.keys.first
       end
 
-      if parent.class.delegate_cache&.key?(edge_class_name)
-        root_association_search_value = parent.send(parent.class.delegate_cache[edge_class_name])
+      if parent_class.delegate_cache&.key?(edge_class_name)
+        root_association_search_value = parent.send(parent_class.delegate_cache[edge_class_name])
       else
         root_association_search_value = parent
       end
@@ -65,10 +74,14 @@ module GraphQLIncludable
       # node.parents
       # parent.nodes
       edge_association_name = node.class.name.pluralize.downcase.to_sym
-      if parent.class.delegate_cache&.key?(edge_association_name)
-        parent_class = str_to_class(parent.class.delegate_cache[edge_association_name])
+      if parent.instance_of?(GraphQLIncludable::New::Relay::LazyEvaluatedNode)
+        parent_class = parent._value.class
       else
-        parent_class = parent.class
+        if parent.class.delegate_cache&.key?(edge_association_name)
+          parent_class = str_to_class(parent.class.delegate_cache[edge_association_name])
+        else
+          parent_class = parent.class
+        end
       end
       edge_association = parent_class.reflect_on_association(edge_association_name)
       edge_joins = []

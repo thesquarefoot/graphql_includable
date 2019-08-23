@@ -22,8 +22,13 @@ module GraphQLIncludable
       class EdgeWithNode < GraphQL::Relay::Edge
         def initialize(node, connection)
           @edge = node
-          node = LazyEvaluatedNode.new { connection.edge_to_node(@edge) }
-          super(node, connection)
+          @edge_to_node = ->() { connection.edge_to_node(@edge) }
+          super(nil, connection)
+        end
+
+        def node
+          @node ||= @edge_to_node.call
+          @node
         end
 
         def method_missing(method_name, *args, &block)
@@ -36,31 +41,6 @@ module GraphQLIncludable
 
         def respond_to_missing?(method_name, include_private = false)
           @edge.respond_to?(method_name) || super
-        end
-      end
-
-      class LazyEvaluatedNode
-        def initialize(&block)
-          @lazy_value = block
-        end
-
-        def method_missing(method_name, *args, &block)
-          if _value.respond_to?(method_name)
-            _value.send(method_name, *args, &block)
-          else
-            super
-          end
-        end
-
-        def respond_to_missing?(method_name, include_private = false)
-          _value.respond_to?(method_name) || super
-        end
-
-        # TODO: Hide value_class when old api is gone
-        # private
-
-        def _value
-          @resolved_value ||= @lazy_value.call
         end
       end
     end

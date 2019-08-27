@@ -8,6 +8,7 @@ module GraphQLIncludable
       def includes_from_graphql(ctx)
         ActiveSupport::Notifications.instrument('graphql_includable.includes_from_graphql') do |instrument|
           instrument[:operation_name] = ctx.query&.operation_name
+          instrument[:field_name] = ctx.irep_node.name
 
           node = Resolver.find_node_by_return_type(ctx.irep_node, name)
           manager = IncludesManager.new(nil)

@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe GraphQLIncludable::New::ConnectionIncludesBuilder do
-  context 'A connection with only nodes', :focus do
+  context 'A connection with only nodes' do
     context 'with no siblings or deep nesting' do
       it 'generates the correct includes pattern' do
         builder = subject
@@ -47,7 +47,7 @@ describe GraphQLIncludable::New::ConnectionIncludesBuilder do
     end
   end
 
-  context 'A connection with only edges and node', :focus do
+  context 'A connection with only edges and node' do
     context 'when only edges is given' do
       it 'does not generate includes' do
         builder = subject
@@ -108,7 +108,7 @@ describe GraphQLIncludable::New::ConnectionIncludesBuilder do
     end
   end
 
-  context 'A connection with nodes and edges', :focus do
+  context 'A connection with nodes and edges' do
     context 'with no siblings or deep nesting' do
       it 'generates the correct includes pattern' do
         builder = subject

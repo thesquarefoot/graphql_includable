@@ -87,6 +87,19 @@ ClientType = GraphQL::ObjectType.define do
       Task.includes(GraphQLIncludable::New.includes(ctx)).all
     end
   end
+
+  connection :new_chain, TaskType.define_connection(edge_type: ClientTaskEdgeType) { name 'NewChainConnection' } do
+    argument :continue_includes, !types.Boolean
+    new_includes ->(args, ctx) do
+      return unless args[:continue_includes]
+      nodes(:tasks)
+    end
+
+    resolve ->(client, args, ctx) do
+      return client.tasks if args[:continue_includes]
+      Task.includes(GraphQLIncludable::New.includes(ctx)).all
+    end
+  end
 end
 
 GraphQLSchema = GraphQL::Schema.define(

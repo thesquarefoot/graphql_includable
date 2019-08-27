@@ -603,6 +603,89 @@ describe GraphQLIncludable::New::Resolver do
           Bullet.end_request
         end
       end
+
+      context 'with a conditional internal query' do
+        let(:query_string) do
+          <<-GQL
+          query Conditional($continue_includes: Boolean!) {
+            clients {
+              new_chain(continue_includes: $continue_includes) {
+                nodes {
+                  name
+                  location {
+                    name
+                  }
+                }
+              }
+            }
+          }
+          GQL
+        end
+
+        context 'when the includes are chained' do
+          let(:variables) do {'continue_includes' => true} end
+          it 'generates the correct includes pattern' do
+            received_events = []
+            subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
+              event = ActiveSupport::Notifications::Event.new(*args)
+              received_events << event
+            end
+
+            GraphQLSchema.execute(query_string, operation_name: 'Conditional', variables: variables, context: {})
+            ActiveSupport::Notifications.unsubscribe(subscription)
+
+            expect(received_events.length).to eq(1)
+            expect(received_events[0].payload[:includes]).to eq({ tasks: [:location] })
+          end
+
+          it 'does not over/under include'  do
+            Bullet.start_request
+            result = GraphQLSchema.execute(
+              query_string,
+              variables: variables,
+              context: {}
+            ).to_h
+            Bullet.perform_out_of_channel_notifications if Bullet.notification?
+            Bullet.end_request
+          end
+        end
+
+        context 'when the includes are not chained' do
+          let(:variables) do {'continue_includes' => false} end
+          it 'generates the correct includes pattern' do
+            received_events = []
+            subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
+              event = ActiveSupport::Notifications::Event.new(*args)
+              received_events << event
+            end
+
+            GraphQLSchema.execute(query_string, operation_name: 'Conditional', variables: variables, context: {})
+            ActiveSupport::Notifications.unsubscribe(subscription)
+
+            expect(received_events.length).to eq(4)
+            clients_call = received_events[0]
+            new_chain_1_call = received_events[1]
+            new_chain_2_call = received_events[2]
+            new_chain_3_call = received_events[3]
+
+            expect(clients_call.payload[:includes]).to eq({})
+            expect(new_chain_1_call.payload[:includes]).to eq([:location])
+            expect(new_chain_2_call.payload[:includes]).to eq([:location])
+            expect(new_chain_3_call.payload[:includes]).to eq([:location])
+          end
+
+          it 'does not over/under include'  do
+            Bullet.start_request
+            result = GraphQLSchema.execute(
+              query_string,
+              variables: variables,
+              context: {}
+            ).to_h
+            Bullet.perform_out_of_channel_notifications if Bullet.notification?
+            Bullet.end_request
+          end
+        end
+      end
     end
 
     context 'for an incorrectly configured schema' do

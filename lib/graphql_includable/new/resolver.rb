@@ -98,13 +98,13 @@ module GraphQLIncludable
       # When includes_for_node is called within a connection resolver, there is no need to use that field's nodes/edges
       # includes, only edge_to_node includes
       def includes_for_top_level_connection(node, includes)
-        builder = build_connection_includes(node)
-        return unless builder&.edges_builder.node_builder&.includes?
-
         connection_children = node.scoped_children[node.return_type.unwrap]
         top_level_being_resolved = @root_ctx.namespace(:gql_includable)[:resolving]
 
         if top_level_being_resolved == :edges
+          builder = build_connection_includes(node)
+          return unless builder&.edges_builder.node_builder&.includes?
+
           edges_node = connection_children['edges']
           edges_includes = includes
 

@@ -108,6 +108,7 @@ describe GraphQLIncludable::New::Resolver do
         GraphQLSchema.execute(query_string, variables: {}, context: {})
       end.to instrument('graphql_includable.includes').with(
         operation_name: 'BasicQuery',
+        field_name: 'clients',
         includes: [:user, { client_tasks: [:task] }]
       )
     end
@@ -144,6 +145,7 @@ describe GraphQLIncludable::New::Resolver do
           GraphQLSchema.execute(query_string, variables: {}, context: {})
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
+          field_name: 'clients',
           includes: [:user, { client_tasks: { task: [:location] } }]
         )
       end
@@ -184,6 +186,7 @@ describe GraphQLIncludable::New::Resolver do
           GraphQLSchema.execute(query_string, variables: {}, context: {})
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
+          field_name: 'clients',
           includes: { tasks: [:location] }
         )
       end
@@ -221,6 +224,7 @@ describe GraphQLIncludable::New::Resolver do
           GraphQLSchema.execute(query_string, variables: {}, context: {})
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
+          field_name: 'clients',
           includes: [:client_tasks]
         )
       end
@@ -264,6 +268,7 @@ describe GraphQLIncludable::New::Resolver do
           GraphQLSchema.execute(query_string, variables: {}, context: {})
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
+          field_name: 'clients',
           includes: [:client_tasks, { tasks: [:location] }]
         )
       end
@@ -307,6 +312,7 @@ describe GraphQLIncludable::New::Resolver do
           GraphQLSchema.execute(query_string, variables: {}, context: {})
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
+          field_name: 'clients',
           includes: [:client_tasks, { tasks: [:location] }]
         )
       end

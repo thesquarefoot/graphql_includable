@@ -56,7 +56,6 @@ module GraphQLIncludable
           true
         end
 
-        # rubocop:disable Metrics/AbcSize
         def validate!(field, is_proc_based)
           unless field.metadata.key?(:connection_properties)
             raise ArgumentError, 'Missing connection_properties definition for field'
@@ -69,7 +68,6 @@ module GraphQLIncludable
           raise ArgumentError, 'Missing :edges' unless is_proc_based || properties.key?(:edges)
           raise ArgumentError, 'Missing :edge_to_node' unless properties.key?(:edge_to_node)
         end
-        # rubocop:enable Metrics/AbcSize
       end
 
       GraphQL::Relay::BaseConnection.register_connection_implementation(

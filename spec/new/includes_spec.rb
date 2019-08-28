@@ -32,9 +32,9 @@ describe GraphQLIncludable::New::Includes do
         nested_b.add_child(:b_2)
         nested_c = subject.add_child(:c)
         nested_c.add_child(:c_1)
-        nested_c_2 = nested_c.add_child(:c_2)
-        nested_c_2.add_child(:c_2_1)
-        nested_c_2.add_child(:c_2_2)
+        nested_c2 = nested_c.add_child(:c_2)
+        nested_c2.add_child(:c_2_1)
+        nested_c2.add_child(:c_2_2)
 
         expect(subject.active_record_includes).to eq([:a, { b: [:b_2], c: [:c_1, { c_2: [:c_2_1, :c_2_2] }] }])
       end

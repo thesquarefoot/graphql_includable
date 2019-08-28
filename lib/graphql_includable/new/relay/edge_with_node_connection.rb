@@ -7,8 +7,8 @@ module GraphQLIncludable
 
         # rubocop:disable Metrics/ParameterLists
         def initialize(parent, args, ctx,
-                      edges_property, nodes_property, edge_to_node_property,
-                      edges_resolver, nodes_resolver)
+                       edges_property, nodes_property, edge_to_node_property,
+                       edges_resolver, nodes_resolver)
           @parent = parent
           @args = args
           @ctx = ctx

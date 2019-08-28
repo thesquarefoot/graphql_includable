@@ -52,7 +52,7 @@ describe GraphQLIncludable::New::IncludesBuilder do
     context 'Multiple sibling calls to path' do
       it 'it raises error inside `path`' do
         builder = subject
-        expect {
+        expect do
           builder.path(:test) do
             path(:nested) do
               path(:deeper) do
@@ -64,7 +64,7 @@ describe GraphQLIncludable::New::IncludesBuilder do
               end
             end
           end
-        }.to raise_error(ArgumentError)
+        end.to raise_error(ArgumentError)
       end
 
       it 'it does not raise error inside `sibling_path`' do

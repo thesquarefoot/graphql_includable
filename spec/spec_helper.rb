@@ -18,7 +18,7 @@ Bullet.n_plus_one_query_enable = true
 Bullet.unused_eager_loading_enable = true
 Bullet.counter_cache_enable = true
 
-ActiveRecord::Base.establish_connection adapter: "sqlite3", database: ":memory:"
+ActiveRecord::Base.establish_connection adapter: 'sqlite3', database: ':memory:'
 
 RSpec.configure do |config|
 end

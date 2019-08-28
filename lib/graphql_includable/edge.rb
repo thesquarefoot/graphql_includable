@@ -1,6 +1,8 @@
 # rubocop:disable Style/ConditionalAssignment
 # rubocop:disable Lint/HandleExceptions
 # rubocop:disable Metrics/AbcSize
+# rubocop:disable Style/IfInsideElse
+# rubocop:disable Metrics/MethodLength
 module GraphQLIncludable
   class Edge < GraphQL::Relay::Edge
     def edge
@@ -11,12 +13,12 @@ module GraphQLIncludable
       edge_class = str_to_class(edge_class_name)
 
       parent = if self.parent.instance_of?(GraphQLIncludable::New::Relay::LazyEvaluatedNode)
-        parent_class = self.parent._value.class
-        self.parent._value
-      else
-        parent_class = self.parent.class
-        self.parent
-      end
+                 parent_class = self.parent._value.class
+                 self.parent._value
+               else
+                 parent_class = self.parent.class
+                 self.parent
+               end
 
       root_association_key = class_to_str(parent_class)
       unless edge_class.reflections.keys.include?(root_association_key)

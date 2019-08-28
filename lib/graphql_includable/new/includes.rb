@@ -17,11 +17,11 @@ module GraphQLIncludable
 
       def merge_includes(includes_manager)
         includes_manager.included_children.each do |key, manager|
-          if included_children.key?(key)
-            included_children[key] = included_children[key].merge_includes(manager)
-          else
-            included_children[key] = manager
-          end
+          included_children[key] = if included_children.key?(key)
+                                     included_children[key].merge_includes(manager)
+                                   else
+                                     manager
+                                   end
         end
         self
       end

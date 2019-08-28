@@ -34,7 +34,7 @@ describe GraphQLIncludable::New::ConnectionIncludesBuilder do
         expect(builder.includes?).to eq(true)
         expect(builder.nodes_builder.includes?).to eq(true)
         expect(builder.nodes_builder.included_path).to eq([:through_something, :to, :nodes_a])
-        expect(builder.nodes_builder.active_record_includes).to eq({ through_something: { to: [:nodes_a] } })
+        expect(builder.nodes_builder.active_record_includes).to eq(through_something: { to: [:nodes_a] })
 
         expect(builder.edges_builder.builder.includes?).to eq(true)
         expect(builder.edges_builder.builder.included_path).to eq([:through_something])
@@ -145,7 +145,7 @@ describe GraphQLIncludable::New::ConnectionIncludesBuilder do
         expect(builder.includes?).to eq(true)
         expect(builder.nodes_builder.includes?).to eq(true)
         expect(builder.nodes_builder.included_path).to eq([:through_something, :to, :nodes_a])
-        expect(builder.nodes_builder.active_record_includes).to eq({ through_something: { to: [:nodes_a] } })
+        expect(builder.nodes_builder.active_record_includes).to eq(through_something: { to: [:nodes_a] })
 
         expect(builder.edges_builder.builder.includes?).to eq(true)
         expect(builder.edges_builder.builder.included_path).to eq([:through_something])
@@ -176,7 +176,12 @@ describe GraphQLIncludable::New::ConnectionIncludesBuilder do
 
         expect(builder.edges_builder.builder.includes?).to eq(true)
         expect(builder.edges_builder.builder.included_path).to eq([:edges_a])
-        expect(builder.edges_builder.builder.active_record_includes).to eq([:edges_a, { other_association_for_edges: [:that_goes_deeper] }])
+        expect(builder.edges_builder.builder.active_record_includes).to eq(
+          [
+            :edges_a,
+            { other_association_for_edges: [:that_goes_deeper] }
+          ]
+        )
 
         expect(builder.edges_builder.node_builder.includes?).to eq(true)
         expect(builder.edges_builder.node_builder.included_path).to eq([:node_on_edge_a])

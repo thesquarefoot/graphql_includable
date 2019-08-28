@@ -52,7 +52,7 @@ describe GraphQLIncludable::New::Resolver do
         context: {}
       ).to_h
 
-      expect(result).to eq({
+      expect(result).to eq(
         'data' => {
           'users' => [
             {
@@ -61,7 +61,7 @@ describe GraphQLIncludable::New::Resolver do
               'clients' => {
                 'nodes' => [
                   {
-                    'name' => '1',
+                    'name' => '1'
                   },
                   {
                     'name' => '2'
@@ -75,12 +75,12 @@ describe GraphQLIncludable::New::Resolver do
           ],
           'clients' => [
             {
-              'name'=>'1',
+              'name' => '1',
               'user' => { 'name' => 'Jordan' },
               'tasks' => {
                 'edges' => [
-                  { 'completed' => false, 'node' => { 'name' => 'Task A' }},
-                  { 'completed' => false, 'node' => { 'name' => 'Task B' }}
+                  { 'completed' => false, 'node' => { 'name' => 'Task A' } },
+                  { 'completed' => false, 'node' => { 'name' => 'Task B' } }
                 ]
               }
             },
@@ -89,7 +89,7 @@ describe GraphQLIncludable::New::Resolver do
               'user' => { 'name' => 'Jordan' },
               'tasks' => {
                 'edges' => [
-                  { 'completed' => false, 'node' => { 'name'=>'Task C' }}
+                  { 'completed' => false, 'node' => { 'name' => 'Task C' } }
                 ]
               }
             },
@@ -100,7 +100,7 @@ describe GraphQLIncludable::New::Resolver do
             }
           ]
         }
-      })
+      )
     end
 
     it 'generates the correct includes pattern' do
@@ -419,9 +419,9 @@ describe GraphQLIncludable::New::Resolver do
           client_3_call = received_events[3]
 
           expect(clients_call.payload[:includes]).to eq({})
-          expect(client_1_call.payload[:includes]).to eq({ task: [:location] })
-          expect(client_2_call.payload[:includes]).to eq({ task: [:location] })
-          expect(client_3_call.payload[:includes]).to eq({ task: [:location] })
+          expect(client_1_call.payload[:includes]).to eq(task: [:location])
+          expect(client_2_call.payload[:includes]).to eq(task: [:location])
+          expect(client_3_call.payload[:includes]).to eq(task: [:location])
         end
 
         it 'does not over/under include' do
@@ -431,6 +431,7 @@ describe GraphQLIncludable::New::Resolver do
             variables: {},
             context: {}
           ).to_h
+          expect(result['errors']).to be_nil
           Bullet.perform_out_of_channel_notifications if Bullet.notification?
           Bullet.end_request
         end
@@ -483,6 +484,7 @@ describe GraphQLIncludable::New::Resolver do
             variables: {},
             context: {}
           ).to_h
+          expect(result['errors']).to be_nil
           Bullet.perform_out_of_channel_notifications if Bullet.notification?
           Bullet.end_request
         end
@@ -537,13 +539,14 @@ describe GraphQLIncludable::New::Resolver do
           expect(client_edges_3_call.payload[:includes]).to eq({})
         end
 
-        it 'does not over/under include'  do
+        it 'does not over/under include' do
           Bullet.start_request
           result = GraphQLSchema.execute(
             query_string,
             variables: {},
             context: {}
           ).to_h
+          expect(result['errors']).to be_nil
           Bullet.perform_out_of_channel_notifications if Bullet.notification?
           Bullet.end_request
         end
@@ -598,13 +601,14 @@ describe GraphQLIncludable::New::Resolver do
           expect(client_edges_3_call.payload[:includes]).to eq({})
         end
 
-        it 'does not over/under include'  do
+        it 'does not over/under include' do
           Bullet.start_request
           result = GraphQLSchema.execute(
             query_string,
             variables: {},
             context: {}
           ).to_h
+          expect(result['errors']).to be_nil
           Bullet.perform_out_of_channel_notifications if Bullet.notification?
           Bullet.end_request
         end
@@ -629,7 +633,7 @@ describe GraphQLIncludable::New::Resolver do
         end
 
         context 'when the includes are chained' do
-          let(:variables) do {'continue_includes' => true} end
+          let(:variables) { { 'continue_includes' => true } }
           it 'generates the correct includes pattern' do
             received_events = []
             subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
@@ -641,23 +645,24 @@ describe GraphQLIncludable::New::Resolver do
             ActiveSupport::Notifications.unsubscribe(subscription)
 
             expect(received_events.length).to eq(1)
-            expect(received_events[0].payload[:includes]).to eq({ tasks: [:location] })
+            expect(received_events[0].payload[:includes]).to eq(tasks: [:location])
           end
 
-          it 'does not over/under include'  do
+          it 'does not over/under include' do
             Bullet.start_request
             result = GraphQLSchema.execute(
               query_string,
               variables: variables,
               context: {}
             ).to_h
+            expect(result['errors']).to be_nil
             Bullet.perform_out_of_channel_notifications if Bullet.notification?
             Bullet.end_request
           end
         end
 
         context 'when the includes are not chained' do
-          let(:variables) do {'continue_includes' => false} end
+          let(:variables) { { 'continue_includes' => false } }
           it 'generates the correct includes pattern' do
             received_events = []
             subscription = ActiveSupport::Notifications.subscribe('graphql_includable.includes') do |*args|
@@ -680,13 +685,14 @@ describe GraphQLIncludable::New::Resolver do
             expect(new_chain_3_call.payload[:includes]).to eq([:location])
           end
 
-          it 'does not over/under include'  do
+          it 'does not over/under include' do
             Bullet.start_request
             result = GraphQLSchema.execute(
               query_string,
               variables: variables,
               context: {}
             ).to_h
+            expect(result['errors']).to be_nil
             Bullet.perform_out_of_channel_notifications if Bullet.notification?
             Bullet.end_request
           end
@@ -711,16 +717,15 @@ describe GraphQLIncludable::New::Resolver do
 
       it 'overfetches anyway' do
         Bullet.start_request
-        expect {
-          result = GraphQLSchema.execute(
+        expect do
+          GraphQLSchema.execute(
             query_string,
             variables: {},
             context: {}
-          ).to_h
-          expect(result['errors']).to be_nil
+          )
           Bullet.perform_out_of_channel_notifications if Bullet.notification?
           Bullet.end_request
-        }.to raise_error(Bullet::Notification::UnoptimizedQueryError)
+        end.to raise_error(Bullet::Notification::UnoptimizedQueryError)
       end
     end
   end

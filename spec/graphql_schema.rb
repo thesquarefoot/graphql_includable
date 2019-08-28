@@ -8,7 +8,7 @@ UserType = GraphQL::ObjectType.define do
   connection :clients, ClientType.define_connection do
     new_includes ->() { nodes(:clients) }
 
-    resolve ->(user, args, ctx) do
+    resolve ->(user, _args, _ctx) do
       raise 'Missing includes' unless user.association(:clients).loaded?
       user.clients
     end
@@ -28,6 +28,14 @@ end
 
 ClientTaskEdgeType = TaskType.define_edge do
   field :completed, !types.Boolean
+end
+
+OverFetchedConnectionType = TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
+  name 'OverFetchedConnection'
+end
+
+NestedQueryConnectionType = TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
+  name 'NestedQueryConnection'
 end
 
 ClientType = GraphQL::ObjectType.define do
@@ -52,7 +60,7 @@ ClientType = GraphQL::ObjectType.define do
     end
   end
 
-  connection :over_fetched, TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) { name 'OverFetchedConnection' } do
+  connection :over_fetched, OverFetchedConnectionType do
     connection_properties(edge_to_node: :task)
 
     new_includes ->() do
@@ -63,34 +71,34 @@ ClientType = GraphQL::ObjectType.define do
       end
     end
 
-    resolve_edges ->(client, args, ctx) do
+    resolve_edges ->(_client, _args, _ctx) do
       []
     end
 
-    resolve_nodes ->(client, args, ctx) do
+    resolve_nodes ->(_client, _args, _ctx) do
       []
     end
   end
 
-  connection :nested_query, TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) { name 'NestedQueryConnection' } do
+  connection :nested_query, NestedQueryConnectionType do
     connection_properties(edge_to_node: :task)
 
     new_includes ->() do
       edges { node(:task) }
     end
 
-    resolve_edges ->(client, args, ctx) do
+    resolve_edges ->(_client, _args, ctx) do
       ClientTask.includes(GraphQLIncludable::New.includes(ctx)).all
     end
 
-    resolve_nodes ->(client, args, ctx) do
+    resolve_nodes ->(_client, _args, ctx) do
       Task.includes(GraphQLIncludable::New.includes(ctx)).all
     end
   end
 
   connection :new_chain, TaskType.define_connection(edge_type: ClientTaskEdgeType) { name 'NewChainConnection' } do
     argument :continue_includes, !types.Boolean
-    new_includes ->(args, ctx) do
+    new_includes ->(args, _ctx) do
       return unless args[:continue_includes]
       nodes(:tasks)
     end

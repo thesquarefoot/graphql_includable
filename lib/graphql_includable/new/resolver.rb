@@ -1,7 +1,7 @@
 GraphQL::Field.accepts_definitions(
   ##
   # Define Active Record includes for a field
-  new_includes: GraphQL::Define.assign_metadata_key(:new_includes),
+  new_includes: GraphQL::Define.assign_metadata_key(:new_includes)
 )
 
 module GraphQLIncludable
@@ -39,6 +39,8 @@ module GraphQLIncludable
         end
       end
 
+      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable Metrics/MethodLength
       def includes_for_connection(node, includes)
         builder = build_connection_includes(node)
         return unless builder&.includes?
@@ -89,7 +91,7 @@ module GraphQLIncludable
               includes_for_child(node_child_node, nodes_includes)
             end
           elsif connection_node.name == 'totalCount'
-            # Handled using `.size` - if includes() grabbed edges/nodes it will .length else, a COUNT query saving memory.
+            # Handled using `.size`
           end
         end
       end
@@ -103,7 +105,7 @@ module GraphQLIncludable
 
         if top_level_being_resolved == :edges
           builder = build_connection_includes(node)
-          return unless builder&.edges_builder.node_builder&.includes?
+          return unless builder&.edges_builder&.node_builder&.includes?
 
           edges_node = connection_children['edges']
           edges_includes = includes
@@ -134,12 +136,14 @@ module GraphQLIncludable
           end
         end
       end
+      # rubocop:enable Metrics/MethodLength
+      # rubocop:enable Metrics/AbcSize
 
       def build_includes(node)
         includes_meta = node.definition.metadata[:new_includes]
         return nil if includes_meta.blank?
 
-        builder = GraphQLIncludable::New::IncludesBuilder.new()
+        builder = GraphQLIncludable::New::IncludesBuilder.new
 
         if includes_meta.is_a?(Proc)
           if includes_meta.arity == 2
@@ -159,7 +163,7 @@ module GraphQLIncludable
         includes_meta = node.definition.metadata[:new_includes]
         return nil if includes_meta.blank?
 
-        builder = GraphQLIncludable::New::ConnectionIncludesBuilder.new()
+        builder = GraphQLIncludable::New::ConnectionIncludesBuilder.new
         if includes_meta.arity == 2
           args_for_field = @root_ctx.query.arguments_for(node, node.definition)
           builder.instance_exec(args_for_field, @root_ctx, &includes_meta)

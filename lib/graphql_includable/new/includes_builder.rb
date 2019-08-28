@@ -39,8 +39,8 @@ module GraphQLIncludable
         end
 
         if block_given?
-          nested = GraphQLIncludable::New::IncludesBuilder.new()
-          nested.instance_eval &block
+          nested = GraphQLIncludable::New::IncludesBuilder.new
+          nested.instance_eval(&block)
           symbols += nested.included_path
           includes.merge_includes(nested.includes)
         end
@@ -58,21 +58,19 @@ module GraphQLIncludable
           includes = @includes
         end
 
-        if block_given?
-          nested = GraphQLIncludable::New::IncludesBuilder.new(only_one_path: false)
-          nested.instance_eval &block
-          symbols += nested.included_path
-          includes.merge_includes(nested.includes)
-        end
+        return unless block_given?
+        nested = GraphQLIncludable::New::IncludesBuilder.new(only_one_path: false)
+        nested.instance_eval(&block)
+        includes.merge_includes(nested.includes)
       end
     end
 
     class ConnectionIncludesBuilder
       attr_reader :nodes_builder, :edges_builder
 
-      def initialize()
-        @nodes_builder = IncludesBuilder.new()
-        @edges_builder = ConnectionEdgesIncludesBuilder.new()
+      def initialize
+        @nodes_builder = IncludesBuilder.new
+        @edges_builder = ConnectionEdgesIncludesBuilder.new
       end
 
       def includes?
@@ -91,9 +89,9 @@ module GraphQLIncludable
     class ConnectionEdgesIncludesBuilder
       attr_reader :builder, :node_builder
 
-      def initialize()
-        @builder = IncludesBuilder.new()
-        @node_builder = IncludesBuilder.new()
+      def initialize
+        @builder = IncludesBuilder.new
+        @node_builder = IncludesBuilder.new
       end
 
       def includes?

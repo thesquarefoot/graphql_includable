@@ -28,8 +28,7 @@ Metrics/MethodLength:
 
 Metrics/BlockLength:
   Max: 30
-  ExcludedMethods:
-    - describe
+  ExcludedMethods: ['describe', 'context', 'it', 'shared_examples', 'define', 'draw']
 
 Metrics/ClassLength:
   Max: 120

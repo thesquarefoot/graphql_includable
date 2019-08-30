@@ -10,13 +10,13 @@ describe GraphQLIncludable::New::Includes do
       a.add_child(:a_2).add_child(:a_3)
       b.add_child(:b_2)
 
-      expect(subject.dig()).to eq(subject.included_children)
+      expect(subject.dig).to eq(subject.included_children)
       expect(subject.dig([])).to eq(subject.included_children)
 
-      expect(subject.dig(:a, :a_2).included_children.length).to eq (1)
+      expect(subject.dig(:a, :a_2).included_children.length).to eq(1)
       expect(subject.dig(:a, :a_2).included_children[:a_3]).not_to be_nil
 
-      expect(subject.dig([:a, :a_2]).included_children.length).to eq (1)
+      expect(subject.dig([:a, :a_2]).included_children.length).to eq(1)
       expect(subject.dig([:a, :a_2]).included_children[:a_3]).not_to be_nil
     end
   end

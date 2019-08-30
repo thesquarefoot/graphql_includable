@@ -18,11 +18,7 @@ module GraphQLIncludable
       end
 
       def path_leaf_includes
-        leaf_includes = @includes
-        included_path.each do |key|
-          leaf_includes = leaf_includes[key]
-        end
-        leaf_includes
+        @includes.dig(included_path)
       end
 
       def path(*symbols, &block)

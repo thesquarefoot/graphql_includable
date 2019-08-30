@@ -30,6 +30,12 @@ module GraphQLIncludable
         @included_children[key]
       end
 
+      def dig(*args)
+        args = args[0] if args.length == 1 && args[0].is_a?(Array)
+        return @included_children if args.length == 0
+        @included_children.dig(*args)
+      end
+
       def empty?
         @included_children.empty?
       end

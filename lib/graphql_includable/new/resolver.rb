@@ -26,12 +26,13 @@ module GraphQLIncludable
         return includes_for_connection(node, includes) if node.definition.connection?
 
         builder = build_includes(node)
-        return unless builder&.includes?
+        return unless builder.present?
+        includes.merge_includes(builder.includes) unless builder.includes.empty?
 
-        includes.merge_includes(builder.includes)
+        return unless builder.includes?
 
         # Determine which [nested] child Includes manager to send to the children
-        child_includes = builder.path_leaf_includes
+        child_includes = includes.dig(builder.included_path)
 
         children = node.scoped_children[node.return_type.unwrap]
         children.each_value do |child_node|

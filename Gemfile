@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gem 'activerecord'
 gem 'activesupport'
-gem 'graphql'
+gem 'graphql', '1.7.7'
 
 group :test do
   gem 'rspec'

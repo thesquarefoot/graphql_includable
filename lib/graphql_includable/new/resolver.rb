@@ -16,16 +16,17 @@ module GraphQLIncludable
 
         children = node.scoped_children[node.return_type.unwrap]
         children.each_value do |child_node|
-          includes_for_child(child_node, includes)
+          definition_override = node_definition_override(node, child_node)
+          includes_for_child(child_node, includes, definition_override)
         end
       end
 
       private
 
-      def includes_for_child(node, includes)
-        return includes_for_connection(node, includes) if node.definition.connection?
+      def includes_for_child(node, includes, definition_override)
+        return includes_for_connection(node, includes, definition_override) if node.definition.connection?
 
-        builder = build_includes(node)
+        builder = build_includes(node, definition_override)
         return unless builder.present?
         includes.merge_includes(builder.includes) unless builder.includes.empty?
 
@@ -36,14 +37,15 @@ module GraphQLIncludable
 
         children = node.scoped_children[node.return_type.unwrap]
         children.each_value do |child_node|
-          includes_for_child(child_node, child_includes)
+          definition_override = node_definition_override(node, child_node)
+          includes_for_child(child_node, child_includes, definition_override)
         end
       end
 
       # rubocop:disable Metrics/AbcSize
       # rubocop:disable Metrics/MethodLength
-      def includes_for_connection(node, includes)
-        builder = build_connection_includes(node)
+      def includes_for_connection(node, includes, definition_override)
+        builder = build_connection_includes(node, definition_override)
         return unless builder&.includes?
 
         connection_children = node.scoped_children[node.return_type.unwrap]
@@ -76,10 +78,12 @@ module GraphQLIncludable
 
                 node_children = edge_child_node.scoped_children[edge_child_node.return_type.unwrap]
                 node_children.each_value do |node_child_node|
-                  includes_for_child(node_child_node, edge_node_includes)
+                  definition_override = node_definition_override(edge_child_node, node_child_node)
+                  includes_for_child(node_child_node, edge_node_includes, definition_override)
                 end
               else
-                includes_for_child(edge_child_node, edges_includes)
+                definition_override = node_definition_override(connection_node, edge_child_node)
+                includes_for_child(edge_child_node, edges_includes, definition_override)
               end
             end
           elsif connection_node.name == 'nodes'
@@ -89,7 +93,8 @@ module GraphQLIncludable
 
             node_children = connection_node.scoped_children[connection_node.return_type.unwrap]
             node_children.each_value do |node_child_node|
-              includes_for_child(node_child_node, nodes_includes)
+              definition_override = node_definition_override(connection_node, node_child_node)
+              includes_for_child(node_child_node, nodes_includes, definition_override)
             end
           elsif connection_node.name == 'totalCount'
             # Handled using `.size`
@@ -105,7 +110,7 @@ module GraphQLIncludable
         top_level_being_resolved = @root_ctx.namespace(:gql_includable)[:resolving]
 
         if top_level_being_resolved == :edges
-          builder = build_connection_includes(node)
+          builder = build_connection_includes(node, nil)
           return unless builder&.edges_builder&.node_builder&.includes?
 
           edges_node = connection_children['edges']
@@ -120,10 +125,12 @@ module GraphQLIncludable
 
               node_children = edge_child_node.scoped_children[edge_child_node.return_type.unwrap]
               node_children.each_value do |node_child_node|
-                includes_for_child(node_child_node, edge_node_includes)
+                definition_override = node_definition_override(edge_child_node, node_child_node)
+                includes_for_child(node_child_node, edge_node_includes, definition_override)
               end
             else
-              includes_for_child(edge_child_node, edges_includes)
+              definition_override = node_definition_override(edges_node, edge_child_node)
+              includes_for_child(edge_child_node, edges_includes, definition_override)
             end
           end
         else
@@ -133,15 +140,17 @@ module GraphQLIncludable
 
           node_children = nodes_node.scoped_children[nodes_node.return_type.unwrap]
           node_children.each_value do |node_child_node|
-            includes_for_child(node_child_node, nodes_includes)
+            definition_override = node_definition_override(nodes_node, node_child_node)
+            includes_for_child(node_child_node, nodes_includes, definition_override)
           end
         end
       end
       # rubocop:enable Metrics/MethodLength
       # rubocop:enable Metrics/AbcSize
 
-      def build_includes(node)
-        includes_meta = node.definition.metadata[:new_includes]
+      def build_includes(node, definition_override)
+        definition = definition_override || node.definition
+        includes_meta = definition.metadata[:new_includes]
         return nil if includes_meta.blank?
 
         builder = GraphQLIncludable::New::IncludesBuilder.new
@@ -160,8 +169,9 @@ module GraphQLIncludable
         builder
       end
 
-      def build_connection_includes(node)
-        includes_meta = node.definition.metadata[:new_includes]
+      def build_connection_includes(node, definition_override)
+        definition = definition_override || node.definition
+        includes_meta = definition.metadata[:new_includes]
         return nil if includes_meta.blank?
 
         builder = GraphQLIncludable::New::ConnectionIncludesBuilder.new
@@ -172,6 +182,21 @@ module GraphQLIncludable
           builder.instance_exec(&includes_meta)
         end
         builder
+      end
+
+      def node_definition_override(parent_node, child_node)
+        node_return_type = parent_node.return_type.unwrap
+        child_node_parent_type = child_node.parent.return_type.unwrap
+
+        return nil unless child_node_parent_type != node_return_type
+        child_node_definition_override = nil
+        # Handle GraphQL interface with overridden fields
+        # GraphQL makes child_node.return_type the interface instance
+        # and therefore takes the metadata from the interface rather than the
+        # implementing object's overridden field instance
+        is_interface = node_return_type.interfaces.include?(child_node_parent_type)
+        child_node_definition_override = node_return_type.fields[child_node.name] if is_interface
+        child_node_definition_override
       end
     end
   end

@@ -109,6 +109,7 @@ describe GraphQLIncludable::New::Resolver do
       end.to instrument('graphql_includable.includes').with(
         operation_name: 'BasicQuery',
         field_name: 'clients',
+        starting_at: nil,
         includes: [:user, { client_tasks: [:task] }]
       )
     end
@@ -146,6 +147,7 @@ describe GraphQLIncludable::New::Resolver do
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
           field_name: 'clients',
+          starting_at: nil,
           includes: [:user, { client_tasks: { task: [:location] } }]
         )
       end
@@ -187,6 +189,7 @@ describe GraphQLIncludable::New::Resolver do
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
           field_name: 'clients',
+          starting_at: nil,
           includes: { tasks: [:location] }
         )
       end
@@ -225,6 +228,7 @@ describe GraphQLIncludable::New::Resolver do
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
           field_name: 'clients',
+          starting_at: nil,
           includes: [:client_tasks]
         )
       end
@@ -269,6 +273,7 @@ describe GraphQLIncludable::New::Resolver do
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
           field_name: 'clients',
+          starting_at: nil,
           includes: [:client_tasks, { tasks: [:location] }]
         )
       end
@@ -313,6 +318,7 @@ describe GraphQLIncludable::New::Resolver do
         end.to instrument('graphql_includable.includes').with(
           operation_name: nil,
           field_name: 'clients',
+          starting_at: nil,
           includes: [:client_tasks, { tasks: [:location] }]
         )
       end

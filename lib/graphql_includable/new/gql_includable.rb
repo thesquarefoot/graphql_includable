@@ -18,11 +18,11 @@ module GraphQLIncludable
 
         node = ctx.irep_node
         node = node_for_path(node, starting_at) if starting_at.present?
-        byebug
-        raise ArgumentError, 'Invalid starting_at path' unless node.present?
 
-        resolver.includes_for_node(node, includes)
-        generated_includes = includes.active_record_includes
+        generated_includes = if node.present?
+                               resolver.includes_for_node(node, includes)
+                               includes.active_record_includes
+                             end
 
         instrument[:includes] = generated_includes
         generated_includes

@@ -5,8 +5,6 @@ When resolving a GraphQL query with this model at the root, graphql_includable w
 
 ## Usage
 
-*The `New` namespace and `new_` prefix will be dropped in an upcoming release when backwards compatiblity with the old API is removed.*
-
 1. Define your relationships as ActiveRecord associations.
 
 ```ruby
@@ -19,17 +17,17 @@ class Tree < ActiveRecord::Base
 end
 ```
 
-2. Annotated your GraphQL fields with `new_includes`
+2. Annotated your GraphQL fields with `includes`
 
 ```ruby
 AppleType = GraphQL::ObjectType.define do
   name "Apple"
-  field :tree, !types[!TreeType], new_includes :tree
+  field :tree, !types[!TreeType], includes :tree
 end
 
 TreeType = GraphQL::ObjectType.define do
   name "Tree"
-  field :apples, !types[!AppleType], new_includes :apples
+  field :apples, !types[!AppleType], includes :apples
 end
 ```
 
@@ -48,16 +46,87 @@ BaseQuery = GraphQL::ObjectType.define do
 end
 ```
 
-When resolving a query for `tree.apples`, the association `apples` will be preloaded on `Tree` because of the `new_includes` annotation on the field.
+When resolving a query for `tree.apples`, the association `apples` will be preloaded on `Tree` because of the `includes` annotation on the field.
+
+### Extra includes
+
+`includes` can take a lambda that can be used to build up any `includes` pattern.
+
+For example, let's say a `field` needs to include a grandchild association on the model.
+
+```rb
+class Building < ActiveRecord::Base
+  has_one :location
+class Location < ActiveRecord::Base
+  has_one :address
+end
+class Address < ActiveRecord::Base
+end
+
+BuildingType = GraphQL::ObjectType.define do
+  field :address, !AddressType do
+    includes ->() {
+      path(:location) {
+        path(:address)
+      }
+    }
+    resolve ->(building, args, ctx) {
+      building.location.address
+    }
+  end
+end
+```
+
+You can also include associations where child includes are not chained on.
+
+```rb
+class Building < ActiveRecord::Base
+  has_one :location
+class Location < ActiveRecord::Base
+  has_one :address
+  has_one :neighborhood
+end
+class Address < ActiveRecord::Base
+end
+class Neighborhood < ActiveRecord::Base
+end
+
+AddressType = GraphQL::ObjectType.define do
+  field :street, !types.String
+  field :city, !types.String
+end
+
+AddressWithNeighborhoodType = GraphQL::ObjectType.define do
+  field :address, !AddressType
+  field :neighborhood, !types.String
+end
+
+BuildingType = GraphQL::ObjectType.define do
+  field :address, !AddressWithNeighborhoodType do
+    includes ->() {
+      path(:location) {
+        path(:address) # Deeper includes would be added here { building: { location: [:neighborhood, { address: ... }] } }
+        sibling_path(:neighborhood)
+      }
+    }
+    resolve ->(building, args, ctx) {
+      {
+        address: building.location.address,
+        neighborhood: building.location.neighborhood.name
+      }
+    }
+  end
+end
+```
 
 ### Conditional includes generation
 
-`new_includes` can take a lambda which can check the `args` and `ctx` to decide what to include.
+`includes` can take a lambda which can check the `args` and `ctx` to decide what to include.
 
 ```ruby
 field :conditional_apples do
   argument :kind, !types.String
-  new_includes ->(args, ctx) {
+  includes ->(args, ctx) {
     return :red_delicious_apples if args[:kind] == 'Red Delicious'
     return :pink_pearl_apples if args[:kind] == 'Pink Pearls'
     :apples # fall back to including all apples
@@ -81,7 +150,7 @@ connection :surveys do
   type SurveyType.define_connection
   argument :sent, types.Boolean
 
-  new_includes ->(args, ctx) {
+  includes ->(args, ctx) {
     nodes(:surveys) # When querying `nodes`, include association `surveys`
   }
 
@@ -107,12 +176,12 @@ class Listing < ActiveRecord::Base
 end
 
 SurveyType = GraphQL::ObjectType.define do
-  connection :listings, ListingType.new_define_connection_with_fetched_edge(edge_type: SurveyListingEdgeType) do
+  connection :listings, ListingType.define_connection_with_fetched_edge(edge_type: SurveyListingEdgeType) do
     # Tell fetched-edge-connection how to fetch `nodes` from Survey, `edges` from Survey
     # and how to get from a SurveyListing to the `node` Listing
     connection_properties(nodes: :listings, edges: :survey_listings, edge_to_node: :listing)
 
-    new_includes ->() {
+    includes ->() {
       nodes(:listings) # include :listings when querying nodes directly
       edges do
         path(:survey_listings)  # include :survey_listings when querying edges directly
@@ -177,9 +246,9 @@ any associated attributes are prefixed with `new_`, for example `new_includes` v
 
 Namespacing this API allows applications to run the old and new APIs side by side, there is no need for a big bang migration.
 
-**Version 0.5 will be the last verion to support the old API.**
+**Version 0.5 is the last verion to support the old API.**
 You should migrate to version 0.5 before any future versions as `GraphQLIncludable` namespace and, more critically, the `new_` prefix will
-be dropped from `new_includes`, interferring and breaking the old `includes_from_graphql` API.
+be dropped from `new_includes`, interferring with and breaking the old `includes_from_graphql` API.
 
 In order to simplify the implementation and improve connection support, ActiveRecord introspection was removed. This means your GraphQL `field`s
 now require explicit annotation that they are to be evaluated for inclusion.
@@ -191,7 +260,7 @@ now require explicit annotation that they are to be evaluated for inclusion.
     ```
 3. Start replacing calls to `Model.includes_from_graphql` with
     ```rb
-    Model.includes(GraphQLIncludable.includes(ctx))
+    Model.includes(GraphQLIncludable::New.includes(ctx))
     ```
     You can control at which point in the GraphQL query to start generating includes from
     ```rb
@@ -208,7 +277,7 @@ now require explicit annotation that they are to be evaluated for inclusion.
       argument ...
 
       resolve ->(obj, args, ctx) {
-        includes = GraphQLIncludable.includes(ctx, starting_at: :results)
+        includes = GraphQLIncludable::New.includes(ctx, starting_at: :results)
         Result.includes(includes).where(...)
       }
     end
@@ -234,7 +303,7 @@ BaseQuery = GraphQL::ObjectType.define do
       # Old API - generates includes(:apples)
       trees = Tree.includes_from_graphql(ctx).find_by(args.to_h) # No N+1 problems
       # New API - generates includes()
-      includes = GraphQLIncludable.includes(ctx)
+      includes = GraphQLIncludable::New.includes(ctx)
       Tree.includes(includes).find_by(args.to_h) # Would create N+1 problems
     }
   end
@@ -260,10 +329,48 @@ BaseQuery = GraphQL::ObjectType.define do
       # Old API - generates includes(:apples)
       trees = Tree.includes_from_graphql(ctx).find_by(args.to_h) # No N+1 problems
       # New API - generates includes(:apples)
-      includes = GraphQLIncludable.includes(ctx)
+      includes = GraphQLIncludable::New.includes(ctx)
       Tree.includes(includes).find_by(args.to_h) # No N+1 problems
     }
   end
 end
 ```
 
+## Migrating from 0.5 to 1.0
+
+**Ensure you have migrated to the new API by following the above guidelines before continuing**
+
+1. Remove any `includes:` overrides leftover from the old API. You may have already done this as part of the 0.5 release.
+2. Rename any `new_includes` field annotations with `includes`
+3. Replace calls to `new_define_connection_with_fetched_edge` with `define_connection_with_fetched_edge`
+4. Replace schema instrumentation `instrument(:field, GraphQLIncludable::New::Relay::Instrumentation.new)` with `instrument(:field, GraphQLIncludable::Relay::Instrumentation.new)`
+5. Replace includes generation statements `GraphQLIncludable::New.includes` with `GraphQLIncludable.includes`
+
+```ruby
+AppleType = GraphQL::ObjectType.define do
+  name "Apple"
+  field :tree, !types[!TreeType], includes: :tree
+end
+
+TreeType = GraphQL::ObjectType.define do
+  name "Tree"
+  field :apples, !types[!AppleType], includes: :apples
+end
+
+BaseQuery = GraphQL::ObjectType.define do
+  field :tree, TreeType do
+    argument :id, !types.ID
+    resolve -> (obj, args, ctx) {
+      includes = GraphQLIncludable.includes(ctx)
+      Tree.includes(includes).find_by(args.to_h)
+    }
+  end
+end
+
+GraphQLSchema = GraphQL::Schema.define do
+  query BaseQuery
+  mutation BaseMutation
+
+  instrument(:field, GraphQLIncludable::Relay::Instrumentation.new)
+end
+```

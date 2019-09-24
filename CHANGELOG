@@ -1,3 +1,6 @@
+1.0.0
+  - (breaking change) removed old API. Follow migration guide for 0.4 to 0.5 and 0.5 to 1.0
+
 0.5.0
   - New API (namespaced) so that both can be run side by side while evaluating effects.
     - Requires manual annotation of schema fields with `new_includes`.

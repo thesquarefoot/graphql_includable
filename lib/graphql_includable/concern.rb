@@ -6,8 +6,10 @@ module GraphQLIncludable
 
     module ClassMethods
       def includes_from_graphql(ctx)
+        warn '[DEPRECATION] `includes_from_graphql` is deprecated. See migration guide in README.'
         ActiveSupport::Notifications.instrument('graphql_includable.includes_from_graphql') do |instrument|
           instrument[:operation_name] = ctx.query&.operation_name
+          instrument[:field_name] = ctx.irep_node.name
 
           node = Resolver.find_node_by_return_type(ctx.irep_node, name)
           manager = IncludesManager.new(nil)

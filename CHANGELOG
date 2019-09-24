@@ -1,3 +1,8 @@
+0.5.0
+  - New API (namespaced) so that both can be run side by side while evaluating effects.
+    - Requires manual annotation of schema fields with `new_includes`.
+    - ActiveRecord instrospection removed for simplification on new API.
+
 0.4.0
   - (breaking change) refactored `define_connection_with_fetched_edge` to find edge-to-node properties at the field level rather than type level.
   - (breaking change) removed `edges_property` and `nodes_property`. Replaced with `includes: {edges: :prop1, nodes: :prop2}`.

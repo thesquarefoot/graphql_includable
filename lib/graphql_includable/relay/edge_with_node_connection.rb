@@ -47,7 +47,7 @@ module GraphQLIncludable
       end
 
       def page_info
-        @nodes = determin_page_info_nodes
+        @nodes = determine_page_info_nodes
         super
       end
 
@@ -56,7 +56,7 @@ module GraphQLIncludable
       end
 
       def total_count
-        @nodes = determin_page_info_nodes
+        @nodes = determine_page_info_nodes
         @nodes.size
       end
 
@@ -70,7 +70,7 @@ module GraphQLIncludable
         @edges_and_nodes.ctx
       end
 
-      def determin_page_info_nodes
+      def determine_page_info_nodes
         # If the query asks for `pageInfo` before `edges` or `nodes`, we dont directly know which to use most
         # efficently. We can have a guess by checking if either of the associations are preloaded
         return @loaded_nodes if @loaded_nodes.present?

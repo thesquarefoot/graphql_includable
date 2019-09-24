@@ -1,4 +1,4 @@
-describe GraphQLIncludable::New::Resolver do
+describe GraphQLIncludable::Resolver do
   before(:each) { DatabaseCleaner.start }
   after(:each) { DatabaseCleaner.clean }
 

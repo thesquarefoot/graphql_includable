@@ -11,8 +11,8 @@ module GraphQLIncludable
         @parent = parent
         @args = args
         @ctx = ctx
-        @edges_property = edges_property
-        @nodes_property = nodes_property
+        @edges_property = edges_property # optional
+        @nodes_property = nodes_property # optional
         @edge_to_node_property = edge_to_node_property
         @edges_resolver = edges_resolver
         @nodes_resolver = nodes_resolver
@@ -33,14 +33,20 @@ module GraphQLIncludable
       end
 
       def fetch_edges
+        # This context is used within Resolver for connections
+        ctx.namespace(:gql_includable)[:resolving] = :edges
         @loaded_edges ||= @edges_and_nodes.edges_resolver.call(@edges_and_nodes.parent, args, ctx)
+        ctx.namespace(:gql_includable)[:resolving] = nil
         # Set nodes to make underlying BaseConnection work
         @nodes = @loaded_edges
         @loaded_edges
       end
 
       def fetch_nodes
+        # This context is used within Resolver for connections
+        ctx.namespace(:gql_includable)[:resolving] = :nodes
         @loaded_nodes ||= @edges_and_nodes.nodes_resolver.call(@edges_and_nodes.parent, args, ctx)
+        ctx.namespace(:gql_includable)[:resolving] = nil
         # Set nodes to make underlying BaseConnection work
         @nodes = @loaded_nodes
         @loaded_nodes
@@ -76,11 +82,15 @@ module GraphQLIncludable
         return @loaded_nodes if @loaded_nodes.present?
         return @loaded_edges if @loaded_edges.present?
 
-        nodes_preloaded = @edges_and_nodes.parent.association(@edges_and_nodes.nodes_property).loaded?
-        return fetch_nodes if nodes_preloaded
+        if @edges_and_nodes.nodes_property.present?
+          nodes_preloaded = @edges_and_nodes.parent.association(@edges_and_nodes.nodes_property).loaded?
+          return fetch_nodes if nodes_preloaded
+        end
 
-        edges_preloaded = @edges_and_nodes.parent.association(@edges_and_nodes.edges_property).loaded?
-        return fetch_edges if edges_preloaded
+        if @edges_and_nodes.edges_property.present?
+          edges_preloaded = @edges_and_nodes.parent.association(@edges_and_nodes.edges_property).loaded?
+          return fetch_edges if edges_preloaded
+        end
 
         fetch_nodes
       end

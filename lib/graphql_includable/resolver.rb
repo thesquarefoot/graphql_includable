@@ -1,92 +1,51 @@
+GraphQL::Field.accepts_definitions(
+  ##
+  # Define Active Record includes for a field
+  includes: GraphQL::Define.assign_metadata_key(:includes)
+)
+
 module GraphQLIncludable
-  class IncludesManager
-    def initialize(parent_attribute)
-      @parent_attribute = parent_attribute
-      @included_children = {}
-    end
-
-    def add_child_include(association)
-      return @included_children[association.name] if @included_children.key?(association.name)
-
-      manager = IncludesManager.new(association.name)
-      @included_children[association.name] = manager
-      manager
-    end
-
-    def empty?
-      @included_children.empty?
-    end
-
-    def includes
-      child_includes = {}
-      child_includes_arr = []
-      @included_children.each do |key, value|
-        if value.empty?
-          child_includes_arr << key
-        else
-          includes = value.includes
-          if includes.is_a?(Array)
-            child_includes_arr += includes
-          else
-            child_includes.merge!(includes)
-          end
-        end
-      end
-
-      if child_includes_arr.present?
-        child_includes_arr << child_includes if child_includes.present?
-        child_includes = child_includes_arr
-      end
-
-      return child_includes if @parent_attribute.nil?
-      { @parent_attribute => child_includes }
-    end
-  end
-
   class Resolver
-    # Returns the first node in the tree which returns a specific type
-    def self.find_node_by_return_type(node, desired_return_type)
-      return_type = node.return_type.unwrap.to_s
-      return node if return_type == desired_return_type
-      return nil unless node.respond_to?(:scoped_children)
-
-      matching_node = nil
-      node.scoped_children.values.each do |selections|
-        matching_node = selections.values.find do |child_node|
-          find_node_by_return_type(child_node, desired_return_type)
-        end
-        break if matching_node
-      end
-      matching_node
+    def initialize(ctx)
+      @root_ctx = ctx
     end
 
-    # Translate a node's selections into `includes` values
-    # Combine and format children values
-    # Noop on nodes that don't return AR (so no associations to include)
-    def self.includes_for_node(node, includes_manager)
-      return_model = node_return_model(node)
-      return [] if return_model.blank?
+    def includes_for_node(node, includes)
+      return includes_for_top_level_connection(node, includes) if node.definition.connection?
 
       children = node.scoped_children[node.return_type.unwrap]
-
       children.each_value do |child_node|
-        includes_for_child(child_node, return_model, includes_manager)
+        definition_override = node_definition_override(node, child_node)
+        includes_for_child(child_node, includes, definition_override)
+      end
+    end
+
+    private
+
+    def includes_for_child(node, includes, definition_override)
+      return includes_for_connection(node, includes, definition_override) if node.definition.connection?
+
+      builder = build_includes(node, definition_override)
+      return unless builder.present?
+      includes.merge_includes(builder.includes) unless builder.includes.empty?
+
+      return unless builder.includes?
+
+      # Determine which [nested] child Includes manager to send to the children
+      child_includes = includes.dig(builder.included_path)
+
+      children = node.scoped_children[node.return_type.unwrap]
+      children.each_value do |child_node|
+        definition_override = node_definition_override(node, child_node)
+        includes_for_child(child_node, child_includes, definition_override)
       end
     end
 
     # rubocop:disable Metrics/AbcSize
     # rubocop:disable Metrics/MethodLength
-    def self.includes_from_connection(node, _parent_model, associations_from_parent_model, includes_manager)
-      # TODO: Possibly basic support for connections with only nodes
-      return unless node.return_type.fields['edges'].edge_class <= GraphQLIncludable::Relay::EdgeWithNode
-
-      edges_association = associations_from_parent_model[:edges]
-      nodes_association = associations_from_parent_model[:nodes]
-
-      edge_node_attribute = node.definition.metadata[:edge_to_node_property]
-      edge_model = edges_association.klass
-      edge_to_node_association = edge_model.reflect_on_association(edge_node_attribute)
-      node_model = edge_to_node_association.klass
+    def includes_for_connection(node, includes, definition_override)
+      builder = build_connection_includes(node, definition_override)
+      return unless builder&.includes?
 
       connection_children = node.scoped_children[node.return_type.unwrap]
       connection_children.each_value do |connection_node|
@@ -105,109 +64,138 @@ module GraphQLIncludable
         # }
 
         if connection_node.name == 'edges'
-          edges_includes_manager = includes_manager.add_child_include(edges_association)
+          edges_includes_builder = builder.edges_builder.builder
+          includes.merge_includes(edges_includes_builder.includes)
+          edges_includes = edges_includes_builder.path_leaf_includes
 
           edge_children = connection_node.scoped_children[connection_node.return_type.unwrap]
           edge_children.each_value do |edge_child_node|
             if edge_child_node.name == 'node'
-              node_includes_manager = edges_includes_manager.add_child_include(edge_to_node_association)
+              node_includes_builder = builder.edges_builder.node_builder
+              edges_includes.merge_includes(node_includes_builder.includes)
+              edge_node_includes = node_includes_builder.path_leaf_includes
 
               node_children = edge_child_node.scoped_children[edge_child_node.return_type.unwrap]
               node_children.each_value do |node_child_node|
-                includes_for_child(node_child_node, node_model, node_includes_manager)
+                definition_override = node_definition_override(edge_child_node, node_child_node)
+                includes_for_child(node_child_node, edge_node_includes, definition_override)
               end
             else
-              includes_for_child(edge_child_node, edge_model, edges_includes_manager)
+              definition_override = node_definition_override(connection_node, edge_child_node)
+              includes_for_child(edge_child_node, edges_includes, definition_override)
             end
           end
         elsif connection_node.name == 'nodes'
-          nodes_includes_manager = includes_manager.add_child_include(nodes_association)
+          nodes_includes_builder = builder.nodes_builder
+          includes.merge_includes(nodes_includes_builder.includes)
+          nodes_includes = nodes_includes_builder.path_leaf_includes
+
           node_children = connection_node.scoped_children[connection_node.return_type.unwrap]
           node_children.each_value do |node_child_node|
-            includes_for_child(node_child_node, node_model, nodes_includes_manager)
+            definition_override = node_definition_override(connection_node, node_child_node)
+            includes_for_child(node_child_node, nodes_includes, definition_override)
           end
         elsif connection_node.name == 'totalCount'
-          # Handled using `.size` - if includes() grabbed edges/nodes it will .length else, a COUNT query saving memory.
+          # Handled using `.size`
+        end
+      end
+    end
+
+    # Special case:
+    # When includes_for_node is called within a connection resolver, there is no need to use that field's nodes/edges
+    # includes, only edge_to_node includes
+    def includes_for_top_level_connection(node, includes)
+      connection_children = node.scoped_children[node.return_type.unwrap]
+      top_level_being_resolved = @root_ctx.namespace(:gql_includable)[:resolving]
+
+      if top_level_being_resolved == :edges
+        builder = build_connection_includes(node, nil)
+        return unless builder&.edges_builder&.node_builder&.includes?
+
+        edges_node = connection_children['edges']
+        edges_includes = includes
+
+        edge_children = edges_node.scoped_children[edges_node.return_type.unwrap]
+        edge_children.each_value do |edge_child_node|
+          if edge_child_node.name == 'node'
+            node_includes_builder = builder.edges_builder.node_builder
+            edges_includes.merge_includes(node_includes_builder.includes)
+            edge_node_includes = node_includes_builder.path_leaf_includes
+
+            node_children = edge_child_node.scoped_children[edge_child_node.return_type.unwrap]
+            node_children.each_value do |node_child_node|
+              definition_override = node_definition_override(edge_child_node, node_child_node)
+              includes_for_child(node_child_node, edge_node_includes, definition_override)
+            end
+          else
+            definition_override = node_definition_override(edges_node, edge_child_node)
+            includes_for_child(edge_child_node, edges_includes, definition_override)
+          end
+        end
+      else
+        nodes_node = connection_children['nodes']
+        return unless nodes_node.present?
+        nodes_includes = includes
+
+        node_children = nodes_node.scoped_children[nodes_node.return_type.unwrap]
+        node_children.each_value do |node_child_node|
+          definition_override = node_definition_override(nodes_node, node_child_node)
+          includes_for_child(node_child_node, nodes_includes, definition_override)
         end
       end
     end
     # rubocop:enable Metrics/MethodLength
     # rubocop:enable Metrics/AbcSize
 
-    def self.includes_for_child(node, parent_model, includes_manager)
-      associations = possible_associations(node, parent_model)
-      return unless associations.present?
+    def build_includes(node, definition_override)
+      definition = definition_override || node.definition
+      includes_meta = definition.metadata[:includes]
+      return nil if includes_meta.blank?
 
-      if node_is_relay_connection?(node)
-        includes_from_connection(node, parent_model, associations, includes_manager)
+      builder = GraphQLIncludable::IncludesBuilder.new
+
+      if includes_meta.is_a?(Proc)
+        if includes_meta.arity == 2
+          args_for_field = @root_ctx.query.arguments_for(node, node.definition)
+          builder.instance_exec(args_for_field, @root_ctx, &includes_meta)
+        else
+          builder.instance_exec(&includes_meta)
+        end
       else
-        association = associations[:default] # should only be one
-        child_includes_manager = includes_manager.add_child_include(association)
-        includes_for_node(node, child_includes_manager)
-      end
-    end
-
-    # rubocop:disable Lint/HandleExceptions
-    def self.model_name_to_class(model_name)
-      begin
-        model_name.to_s.camelize.constantize
-      rescue NameError
-        model_name.to_s.singularize.camelize.constantize
-      end
-    rescue
-    end
-
-    # Translate a node's return type to an ActiveRecord model
-    def self.node_return_model(node)
-      model = Object.const_get(node.return_type.unwrap.name.gsub(/(^SquareFoot|Edge$|Connection$)/, ''))
-      model if model < ActiveRecord::Base
-    rescue NameError
-    end
-    # rubocop:enable Lint/HandleExceptions
-
-    def self.node_is_relay_connection?(node)
-      node.return_type.unwrap.name =~ /Connection$/
-    end
-
-    def self.possible_associations(node, parent_model)
-      attribute_names = node_possible_association_names(node)
-      attribute_names.transform_values { |attribute_name| figure_out_association(attribute_name, parent_model) }.compact
-    end
-
-    def self.node_possible_association_names(node)
-      definition = node.definitions.first
-      user_includes = definition.metadata[:includes]
-
-      association_names = {}
-      if node_is_relay_connection?(node)
-        association_names[:edges] = user_includes[:edges] if user_includes.key?(:edges)
-        association_names[:nodes] = user_includes[:nodes] if user_includes.key?(:nodes)
-        return association_names if association_names.present? # This will have resolve procs for nodes and edges
+        builder.path(includes_meta)
       end
 
-      association_names[:default] = user_includes || (definition.property || definition.name).to_sym
-      association_names
+      builder
     end
 
-    def self.figure_out_association(attribute_name, parent_model)
-      delegated_through = includes_delegated_through(parent_model, attribute_name)
-      delegated_model = model_name_to_class(delegated_through.last) if delegated_through.present?
-      association = (delegated_model || parent_model).reflect_on_association(attribute_name)
-      association
-    end
+    def build_connection_includes(node, definition_override)
+      definition = definition_override || node.definition
+      includes_meta = definition.metadata[:includes]
+      return nil if includes_meta.blank?
 
-    # If method_name is delegated from base_model, return an array of
-    # associations through which those methods can be delegated
-    def self.includes_delegated_through(base_model, method_name)
-      chain = []
-      method = method_name.to_sym
-      model_name = base_model.instance_variable_get(:@delegate_cache).try(:[], method)
-      while model_name
-        chain << model_name
-        model = model_name_to_class(model_name)
-        model_name = model.instance_variable_get(:@delegate_cache).try(:[], method)
+      builder = GraphQLIncludable::ConnectionIncludesBuilder.new
+      if includes_meta.arity == 2
+        args_for_field = @root_ctx.query.arguments_for(node, node.definition)
+        builder.instance_exec(args_for_field, @root_ctx, &includes_meta)
+      else
+        builder.instance_exec(&includes_meta)
       end
-      chain
+      builder
+    end
+
+    def node_definition_override(parent_node, child_node)
+      node_return_type = parent_node.return_type.unwrap
+      child_node_parent_type = child_node.parent.return_type.unwrap
+
+      return nil unless child_node_parent_type != node_return_type
+      child_node_definition_override = nil
+      # Handle GraphQL interface with overridden fields
+      # GraphQL makes child_node.return_type the interface instance
+      # and therefore takes the metadata from the interface rather than the
+      # implementing object's overridden field instance
+      is_interface = node_return_type.interfaces.include?(child_node_parent_type)
+      child_node_definition_override = node_return_type.fields[child_node.name] if is_interface
+      child_node_definition_override
     end
   end
 end

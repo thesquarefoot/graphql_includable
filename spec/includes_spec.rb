@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe GraphQLIncludable::New::Includes do
+describe GraphQLIncludable::Includes do
   subject { described_class.new(nil) }
 
   describe '#dig' do

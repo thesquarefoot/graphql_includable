@@ -4,9 +4,9 @@ UserType = GraphQL::ObjectType.define do
   name 'User'
   field :name, !types.String
   field :email, !types.String
-  field :array_clients, !types[!ClientType], property: :clients, new_includes: :clients
+  field :array_clients, !types[!ClientType], property: :clients, includes: :clients
   connection :clients, ClientType.define_connection do
-    new_includes ->() { nodes(:clients) }
+    includes ->() { nodes(:clients) }
 
     resolve ->(user, _args, _ctx) do
       raise 'Missing includes' unless user.association(:clients).loaded?
@@ -23,35 +23,35 @@ end
 TaskType = GraphQL::ObjectType.define do
   name 'Task'
   field :name, !types.String
-  field :location, !LocationType, new_includes: :location
+  field :location, !LocationType, includes: :location
 end
 
 ClientTaskEdgeType = TaskType.define_edge do
   field :completed, !types.Boolean
 end
 
-OverFetchedConnectionType = TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
+OverFetchedConnectionType = TaskType.define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
   name 'OverFetchedConnection'
 end
 
-NestedQueryConnectionType = TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
+NestedQueryConnectionType = TaskType.define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
   name 'NestedQueryConnection'
 end
 
 ClientType = GraphQL::ObjectType.define do
   name 'Client'
   field :name, !types.String
-  field :user, !UserType, new_includes: :user
+  field :user, !UserType, includes: :user
   field :array_tasks, !types[!TaskType], property: :tasks do
-    new_includes ->() do
+    includes ->() do
       path(:client_tasks, :task)
     end
   end
 
-  connection :tasks, TaskType.new_define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
+  connection :tasks, TaskType.define_connection_with_fetched_edge(edge_type: ClientTaskEdgeType) do
     connection_properties(nodes: :tasks, edges: :client_tasks, edge_to_node: :task)
 
-    new_includes ->() do
+    includes ->() do
       nodes(:tasks)
       edges do
         path(:client_tasks)
@@ -63,7 +63,7 @@ ClientType = GraphQL::ObjectType.define do
   connection :over_fetched, OverFetchedConnectionType do
     connection_properties(edge_to_node: :task)
 
-    new_includes ->() do
+    includes ->() do
       nodes(:tasks)
       edges do
         path(:client_tasks)
@@ -83,29 +83,29 @@ ClientType = GraphQL::ObjectType.define do
   connection :nested_query, NestedQueryConnectionType do
     connection_properties(edge_to_node: :task)
 
-    new_includes ->() do
+    includes ->() do
       edges { node(:task) }
     end
 
     resolve_edges ->(_client, _args, ctx) do
-      ClientTask.includes(GraphQLIncludable::New.includes(ctx)).all
+      ClientTask.includes(GraphQLIncludable.includes(ctx)).all
     end
 
     resolve_nodes ->(_client, _args, ctx) do
-      Task.includes(GraphQLIncludable::New.includes(ctx)).all
+      Task.includes(GraphQLIncludable.includes(ctx)).all
     end
   end
 
   connection :new_chain, TaskType.define_connection(edge_type: ClientTaskEdgeType) { name 'NewChainConnection' } do
     argument :continue_includes, !types.Boolean
-    new_includes ->(args, _ctx) do
+    includes ->(args, _ctx) do
       return unless args[:continue_includes]
       nodes(:tasks)
     end
 
     resolve ->(client, args, ctx) do
       return client.tasks if args[:continue_includes]
-      Task.includes(GraphQLIncludable::New.includes(ctx)).all
+      Task.includes(GraphQLIncludable.includes(ctx)).all
     end
   end
 end
@@ -115,17 +115,17 @@ GraphQLSchema = GraphQL::Schema.define(
     name 'BaseQuery'
     field :users, !types[!UserType] do
       resolve ->(_obj, _args, ctx) do
-        User.includes(GraphQLIncludable::New.includes(ctx)).all
+        User.includes(GraphQLIncludable.includes(ctx)).all
       end
     end
 
     field :clients, !types[!ClientType] do
       resolve ->(_obj, _args, ctx) do
-        Client.includes(GraphQLIncludable::New.includes(ctx)).all
+        Client.includes(GraphQLIncludable.includes(ctx)).all
       end
     end
   end
 ) do
-  instrument(:field, GraphQLIncludable::New::Relay::Instrumentation.new)
+  instrument(:field, GraphQLIncludable::Relay::Instrumentation.new)
   resolve_type ->(_type, obj, _ctx) { Object.const_get("#{obj.class}Type") }
 end

@@ -33,7 +33,7 @@ TreeType = GraphQL::ObjectType.define do
 end
 ```
 
-3. Call `GraphQLIncludable::New.includes` when resolving the query, passing in the query context.
+3. Call `GraphQLIncludable.includes` when resolving the query, passing in the query context.
 
 
 ```ruby
@@ -41,7 +41,7 @@ BaseQuery = GraphQL::ObjectType.define do
   field :tree, TreeType do
     argument :id, !types.ID
     resolve -> (obj, args, ctx) {
-      includes = GraphQLIncludable::New.includes(ctx)
+      includes = GraphQLIncludable.includes(ctx)
       Tree.includes(includes).find_by(args.to_h)
     }
   end
@@ -127,7 +127,7 @@ GraphQLSchema = GraphQL::Schema.define do
   mutation BaseMutation
 
   # Add this instrumentation
-  instrument(:field, GraphQLIncludable::New::Relay::Instrumentation.new)
+  instrument(:field, GraphQLIncludable::Relay::Instrumentation.new)
 end
 ```
 
@@ -172,13 +172,13 @@ includes({ survey_listings: [:listing] })
 ```
 
 ## Migrating from 0.4 to 0.5
-With version 0.5 a new, more powerful GraphQLIncludable API has been introduced. This is currently namespaced behind `GraphQLIncludable::New` and
+With version 0.5 a new, more powerful GraphQLIncludable API has been introduced. This is currently namespaced behind `GraphQLIncludable` and
 any associated attributes are prefixed with `new_`, for example `new_includes` vs the old API's `includes`.
 
 Namespacing this API allows applications to run the old and new APIs side by side, there is no need for a big bang migration.
 
 **Version 0.5 will be the last verion to support the old API.**
-You should migrate to version 0.5 before any future versions as `GraphQLIncludable::New` namespace and, more critically, the `new_` prefix will
+You should migrate to version 0.5 before any future versions as `GraphQLIncludable` namespace and, more critically, the `new_` prefix will
 be dropped from `new_includes`, interferring and breaking the old `includes_from_graphql` API.
 
 In order to simplify the implementation and improve connection support, ActiveRecord introspection was removed. This means your GraphQL `field`s
@@ -187,11 +187,11 @@ now require explicit annotation that they are to be evaluated for inclusion.
 1. For all fields that use ActiveRecord associations add a `new_includes` annotation.
 2. Add the following instrumentation to your query for Connection support
     ```rb
-    instrument(:field, GraphQLIncludable::New::Relay::Instrumentation.new)
+    instrument(:field, GraphQLIncludable::Relay::Instrumentation.new)
     ```
 3. Start replacing calls to `Model.includes_from_graphql` with
     ```rb
-    Model.includes(GraphQLIncludable::New.includes(ctx))
+    Model.includes(GraphQLIncludable.includes(ctx))
     ```
     You can control at which point in the GraphQL query to start generating includes from
     ```rb
@@ -208,7 +208,7 @@ now require explicit annotation that they are to be evaluated for inclusion.
       argument ...
 
       resolve ->(obj, args, ctx) {
-        includes = GraphQLIncludable::New.includes(ctx, starting_at: :results)
+        includes = GraphQLIncludable.includes(ctx, starting_at: :results)
         Result.includes(includes).where(...)
       }
     end
@@ -234,7 +234,7 @@ BaseQuery = GraphQL::ObjectType.define do
       # Old API - generates includes(:apples)
       trees = Tree.includes_from_graphql(ctx).find_by(args.to_h) # No N+1 problems
       # New API - generates includes()
-      includes = GraphQLIncludable::New.includes(ctx)
+      includes = GraphQLIncludable.includes(ctx)
       Tree.includes(includes).find_by(args.to_h) # Would create N+1 problems
     }
   end
@@ -260,7 +260,7 @@ BaseQuery = GraphQL::ObjectType.define do
       # Old API - generates includes(:apples)
       trees = Tree.includes_from_graphql(ctx).find_by(args.to_h) # No N+1 problems
       # New API - generates includes(:apples)
-      includes = GraphQLIncludable::New.includes(ctx)
+      includes = GraphQLIncludable.includes(ctx)
       Tree.includes(includes).find_by(args.to_h) # No N+1 problems
     }
   end

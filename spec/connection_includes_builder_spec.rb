@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe GraphQLIncludable::New::ConnectionIncludesBuilder do
+describe GraphQLIncludable::ConnectionIncludesBuilder do
   context 'A connection with only nodes' do
     context 'with no siblings or deep nesting' do
       it 'generates the correct includes pattern' do

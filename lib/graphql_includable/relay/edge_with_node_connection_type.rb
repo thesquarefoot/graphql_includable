@@ -1,3 +1,5 @@
+require_relative 'edge_with_node'
+
 module GraphQLIncludable
   module Relay
     class EdgeWithNodeConnectionType

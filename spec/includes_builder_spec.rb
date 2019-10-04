@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe GraphQLIncludable::New::IncludesBuilder do
+describe GraphQLIncludable::IncludesBuilder do
   describe 'Basic includes path' do
     context 'A single association' do
       it 'includes :test' do

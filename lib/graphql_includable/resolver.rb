@@ -26,7 +26,7 @@ module GraphQLIncludable
       return includes_for_connection(node, includes, definition_override) if node.definition.connection?
 
       builder = build_includes(node, definition_override)
-      return unless builder.present?
+      return if builder.blank?
       includes.merge_includes(builder.includes) unless builder.includes.empty?
 
       return unless builder.includes?
@@ -134,7 +134,7 @@ module GraphQLIncludable
         end
       else
         nodes_node = connection_children['nodes']
-        return unless nodes_node.present?
+        return if nodes_node.blank?
         nodes_includes = includes
 
         node_children = nodes_node.scoped_children[nodes_node.return_type.unwrap]

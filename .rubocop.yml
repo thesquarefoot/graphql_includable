@@ -11,6 +11,9 @@ Style/Lambda:
 Style/FrozenStringLiteralComment:
   Enabled: false
 
+Style/SymbolArray:
+  Enabled: false
+
 Metrics/LineLength:
   Max: 120
 
